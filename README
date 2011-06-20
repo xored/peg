@@ -1,0 +1,7 @@
+The implementation of PEG parser in fantom (http://fantom.org/).
+
+The main resources about PEG:
+  * http://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf
+  * http://en.wikipedia.org/wiki/Parsing_expression_grammar
+  
+Guranteed to build against fantom-1.0.59.
