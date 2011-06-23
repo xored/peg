@@ -1,32 +1,33 @@
 
 @Js
-const mixin Rule {
+const mixin Rule 
+{
   internal abstract Bool exec(Matcher matcher)
 }
 
 @Js
-const mixin RuleContainer {
-  abstract Rule[] kids(RuleResolver ra)
+const mixin RuleContainer 
+{
+  internal abstract Rule[] kids(RuleResolver ra)
 }
 
 @Js
-internal const abstract class AbstractRule : Rule {
+const abstract class AbstractRule : Rule 
+{
   const Str? source
   
   new make(Str? source := null) {
     this.source = source
   }
   
-  override Str toStr() {
-    source ?: defStr
-  }
+  override Str toStr() { source ?: defStr }
   
   abstract Str defStr()
 }
 
 @Js
-internal const class RuleDef {
-  
+internal const class RuleDef 
+{  
   const Str name
   const Rule rule
   
@@ -37,7 +38,7 @@ internal const class RuleDef {
 }
 
 @Js
-internal const abstract class MultiRule : AbstractRule, RuleContainer
+const abstract class MultiRule : AbstractRule, RuleContainer
 {
   const Rule[] rules
   
@@ -45,13 +46,11 @@ internal const abstract class MultiRule : AbstractRule, RuleContainer
     this.rules = rules
   }
   
-  override Rule[] kids(RuleResolver ra) {
-    rules
-  }
+  internal override Rule[] kids(RuleResolver ra) { rules }
 }
 
 @Js
-internal const abstract class SingleRule : AbstractRule, RuleContainer
+const abstract class SingleRule : AbstractRule, RuleContainer
 {
   private const Rule[] kidList
   const Rule rule
@@ -61,31 +60,27 @@ internal const abstract class SingleRule : AbstractRule, RuleContainer
     kidList = [rule]
   }
   
-  override Rule[] kids(RuleResolver ra) {
-    kidList    
-  }
+  internal override Rule[] kids(RuleResolver ra) { kidList }
 }
 
 @Js
-internal const class FirstOfRule : MultiRule
+const class FirstOfRule : MultiRule
 { 
   new make(Rule[] rules, Str? source := null) : super(rules, source) {}
   
-  override Bool exec(Matcher matcher) {
+  internal override Bool exec(Matcher matcher) {
     rules.any { matcher.match(it) }
   }
   
-  override Str defStr() {
-    "(" + rules.join(" / ") + ")"      
-  }
+  override Str defStr() { "(" + rules.join(" / ") + ")" }
 }
 
 @Js
-internal const class SeqRule : MultiRule
+const class SeqRule : MultiRule
 { 
   new make(Rule[] rules, Str? source := null) : super(rules, source) {}
   
-  override Bool exec(Matcher matcher) {
+  internal override Bool exec(Matcher matcher) {
     matcher.pushState
     Bool ret := false
     try {
@@ -96,13 +91,11 @@ internal const class SeqRule : MultiRule
     return ret
   }
   
-  override Str defStr() {
-    "(" + rules.join(" ") + ")"      
-  }
+  override Str defStr() { "(" + rules.join(" ") + ")" }
 }
 
 @Js
-internal const class RepeatRule : SingleRule
+const class RepeatRule : SingleRule
 {
   const Int lower
   const Int upper
@@ -115,7 +108,7 @@ internal const class RepeatRule : SingleRule
     this.upper = upper
   }
   
-  override Bool exec(Matcher matcher) {
+  internal override Bool exec(Matcher matcher) {
     Int count := 0
     while(upper < 0 || count < upper) {
       if (matcher.match(rule)) count++
@@ -139,52 +132,53 @@ internal const class RepeatRule : SingleRule
 }
 
 @Js
-internal const class ZeroOrMoreRule : RepeatRule {
+const class ZeroOrMoreRule : RepeatRule 
+{
   new make(Rule rule, Str? source := null) : super(rule, 0, -1, source) {}
 }
 
 @Js
-internal const class OneOrMoreRule : RepeatRule {
+const class OneOrMoreRule : RepeatRule 
+{
   new make(Rule rule, Str? source := null) : super(rule, 1, -1, source) {}
 }
 
 @Js
-internal const class ZeroOrOneRule : RepeatRule {
+const class ZeroOrOneRule : RepeatRule 
+{
   new make(Rule rule, Str? source := null) : super(rule, 0, 1, source) {}
 }
 
 @Js
-internal const mixin LazyRuleProvider {
+const mixin LazyRuleProvider 
+{
   abstract Rule rule()
 }
 
 @Js
-internal const class LazyRule : AbstractRule, RuleContainer {
+const class LazyRule : AbstractRule, RuleContainer 
+{
   const LazyRuleProvider ruleProv
   
   new make(LazyRuleProvider ruleProv, Str? source := null) : super(source) {
     this.ruleProv = ruleProv
   }
   
-  override Bool exec(Matcher matcher) {
+  internal override Bool exec(Matcher matcher) {
     matcher.match(ruleProv.rule)
   }
   
-  override Rule[] kids(RuleResolver ra) {
-    [ruleProv.rule]
-  }
+  internal override Rule[] kids(RuleResolver ra) { [ruleProv.rule] }
   
-  override Str defStr() {
-    ruleProv.rule.toStr
-  }
+  override Str defStr() { ruleProv.rule.toStr }
 }
 
 @Js
-internal const class TestNotRule : SingleRule
+const class TestNotRule : SingleRule
 {
   new make(Rule rule, Str? source := null) : super(rule, source) {}
   
-  override Bool exec(Matcher matcher) {
+  internal override Bool exec(Matcher matcher) {
     matcher.pushState
     try {
       return !matcher.match(rule)      
@@ -197,10 +191,11 @@ internal const class TestNotRule : SingleRule
 }
 
 @Js
-internal const class TestRule : SingleRule {
+const class TestRule : SingleRule 
+{
   new make(Rule rule, Str? source := null) : super(rule, source) {}
   
-  override Bool exec(Matcher matcher) {
+  internal override Bool exec(Matcher matcher) {
     matcher.pushState
     try {
       return matcher.match(rule)      
@@ -213,12 +208,13 @@ internal const class TestRule : SingleRule {
 }
 
 @Js
-internal const abstract class PrimaryRule : AbstractRule {
+const abstract class PrimaryRule : AbstractRule 
+{
   new make(Str? source := null) : super(source) {}
 }
 
 @Js
-internal const class LiteralRule : AbstractRule
+const class LiteralRule : AbstractRule
 {
   const Int[] chars
   const Str pattern
@@ -228,7 +224,7 @@ internal const class LiteralRule : AbstractRule
     this.chars = pattern.chars
   }
   
-  override Bool exec(Matcher matcher) {
+  internal override Bool exec(Matcher matcher) {
     matcher.pushState
     Bool ret := false
     try {
@@ -253,7 +249,7 @@ internal const class LiteralRule : AbstractRule
 }
 
 @Js
-internal const class CharRule : PrimaryRule
+const class CharRule : PrimaryRule
 {
   const Int char
   
@@ -261,9 +257,7 @@ internal const class CharRule : PrimaryRule
     this.char = char
   }
   
-  override Bool exec(Matcher matcher) {
-    matcher.char(char)
-  }  
+  internal override Bool exec(Matcher matcher) { matcher.char(char) }  
   
   override Str defStr() {
     switch (char) {
@@ -283,7 +277,7 @@ internal const class CharRule : PrimaryRule
 }
 
 @Js
-internal const class RangeRule : PrimaryRule
+const class RangeRule : PrimaryRule
 {
   const Range range
   
@@ -292,24 +286,20 @@ internal const class RangeRule : PrimaryRule
     this.range = range
   }
   
-  override Bool exec(Matcher matcher) {
-    matcher.range(range)
-  }  
+  internal override Bool exec(Matcher matcher) { matcher.range(range) }
   
-  override Str defStr() {
-    range.start.toChar + "-" + range.end.toChar    
-  }
+  override Str defStr() { range.start.toChar + "-" + range.end.toChar }
 }
 
 @Js
-internal const class ClassRule : AbstractRule, RuleContainer {
+const class ClassRule : AbstractRule, RuleContainer 
+{
   const PrimaryRule[] rules
   new make(PrimaryRule[] rules, Str? source := null) : super(source) {
     this.rules = rules
   }
   
-  override Bool exec(Matcher matcher)//, Problems problems)
-  {
+  internal override Bool exec(Matcher matcher) { 
     rules.any { matcher.match(it) }
   }
   
@@ -317,23 +307,22 @@ internal const class ClassRule : AbstractRule, RuleContainer {
     "[" + rules.join("", |r->Str| { r.defStr }) + "]"
   }
   
-  override Rule[] kids(RuleResolver ra) { rules }
+  internal override Rule[] kids(RuleResolver ra) { rules }
 }
 
 @Js
-internal const class SkipRule : AbstractRule
+const class SkipRule : AbstractRule
 {
   new make(Str? source := null) : super(source) {}
   
-  override Bool exec(Matcher matcher) {
-    matcher.skip
-  } 
+  internal override Bool exec(Matcher matcher) { matcher.skip }
   
   override Str defStr() {"."}
 }
 
 @Js
-internal const class RefRule : Rule, RuleContainer {
+const class RefRule : Rule, RuleContainer 
+{
   private static const Str nsSeparator := ":"
   
   const Str name
@@ -348,13 +337,9 @@ internal const class RefRule : Rule, RuleContainer {
     name = parts[NameParser.namePart]
   }
   
-  override Bool exec(Matcher matcher) {
-    return matcher.match(getRefRule(matcher))
-  }
+  internal override Bool exec(Matcher matcher) { matcher.match(getRefRule(matcher)) }
   
-  override Rule[] kids(RuleResolver ra) {
-    [getRefRule(ra)]        
-  }
+  internal override Rule[] kids(RuleResolver ra) { [getRefRule(ra)] }
   
   override Str toStr() {name}
   
