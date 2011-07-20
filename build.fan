@@ -6,7 +6,7 @@ class Build : build::BuildPod
   {
     podName = "peg"
     summary = ""
-    srcDirs = [`fan/`, `fan/example/`]
+    srcDirs = [`fan/`]
     depends = ["sys 1.0"]
   }
 }
