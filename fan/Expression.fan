@@ -3,70 +3,132 @@
 @Js
 internal const class Expression
 {
-  const Obj? a
-  const Obj? b
+  const Obj[] kids
   
-  protected new make(Obj? a, Obj? b) {
-    this.a = a
-    this.b = b
+  protected new make(Obj[] kids := [,]) {
+    this.kids = kids
+  }
+  
+  override Int hash() { kids.hash }
+  
+  override Bool equals(Obj? other) {
+    if (null == other || this.typeof != other.typeof) {
+      echo("Typeof differs: this = $this.typeof, other = $other.typeof")
+      return false
+    }
+    o := other as Expression
+    t := kids == o.kids
+    return t
   }
 }
 
-** Empty expression.
+** Empty expression. Has no kids.
 @Js
 internal const class Empty : Expression {
   static const Empty val := Empty()
-  private new make() : super(null, null) {}
+  
+  private new make() : super() {}
+  
+  override Str toStr() { "empty" }
 }
 
-** Any char (.).
+** Any char (.). Has no kids.
 @Js
 internal const class Any : Expression {
   static const Any val := Any()
-  private new make() : super(null, null) {}
+  
+  private new make() : super() {}
+  
+  override Str toStr() { "." }
 }
 
-** Terminal expression.
+** Terminal expression. Has one kid, which is a string represents terminal symbol. 
 @Js
 internal const class T : Expression {  
-  new make(Str t) : super(t, null) {}  
+  new make(Str t) : super([t]) {}
+  
+  override Str toStr() { "'$kids.first'" }
 }
 
-** Non-terminal expression.
+** Non-terminal expression. Has one kid which is a string represents non-terminal symbol. 
 @Js
 internal const class Nt : Expression {
-  new make(Str name) : super(name, null) {}
+  new make(Str name) : super([name]) {}
+  
+  override Str toStr() { "$kids.first" }
 }
 
-** Sequence expression.
+** Sequence expression. Kids are sub-expressions.
 @Js
 internal const class Seq : Expression {
-  new make(Expression a, Expression b) : super(a, b) {}
+  new make(Expression[] list) : super(list) {
+    if (2 > list.size) {
+      throw ArgErr("Need a list with 2 or more elements, but got $list")
+    }
+  }
+  
+  override Str toStr() {
+    b := StrBuf()
+    b.add("(")
+    kids.each { 
+      b.add(it.toStr) 
+      b.add(" ")
+    }
+    b.add(")")
+    return b.toStr
+  }
 }
 
-** Choice expression.
+** Choice expression. Kids are expressions choices.
 @Js
 internal const class Choice : Expression {  
-  new make(Expression a, Expression b) : super(a, b) {}
+  new make(Expression[] list) : super(list) {
+    if (2 > list.size) {
+      throw ArgErr("Need a list with 2 or more elements, but got $list")
+    }
+  }
+  
+  override Str toStr() {
+    b := StrBuf()
+    kids.each |k, i| { 
+      b.add(k.toStr)
+      if (i < kids.size-1) {
+        b.add(" / ")
+      }
+    }
+    return b.toStr
+  }
 }
 
-** Repetition (e*) expression.
+** Repetition (e*) expression. Has one kid, which is an expression to repeat.
 @Js
 internal const class Rep : Expression {
-  new make(Expression e) : super(e, null) {}
+  new make(Expression e) : super([e]) {}
   
-  ** Desugar one-or-more expression (e+).
-  static Expression plus(Expression e) { Seq(e, Rep(e)) }
+  override Str toStr() { "${kids.first}*" }
 }
 
-** Not predicate expression.
+** Not-predicate expression. Has one kid which is an expression to check.
 @Js
 internal const class Not : Expression {
-  new make(Expression e) : super(e, null) {}
+  new make(Expression e) : super([e]) {}
+  
+  override Str toStr() { "!$kids.first" }
 }
 
 ** Expression factory. 
 ** Use this factory instead of direct expression classes.
+** 
+** Some syntax sugar for building grammars manually is applied. Each 'Obj e', passed to methods
+** directly or as a part of list, is treated as follows: 
+** 
+** 1. If 'e' is an expression, it's returned
+** 2. If 'e' is a string, ... 
+**    2.1. ...and it starts with #, 'nt(e without #)' is returned
+**    2.2. 't(e)' is returned otherwise (so, terminals which start with #, must be specified explicitly)
+** 3. If 'e' is a list, 'seq(e)' is returned
+** 4. If 'e' is a range, 'range(e)' is returned
+** 5. Exception is thrown otherwise
 @Js
 internal const class E {
   
@@ -85,40 +147,22 @@ internal const class E {
   static Expression nt(Str name) { Nt(name) }
   
   ** Expression sequence (e1 e2 .. en).
-  static Expression seq(Obj[] list) {
-    if (2 > list.size) {
-      throw ArgErr("Need a list with 2 or more elements, but got $list")
-    }
-    ret := Seq(parse(list[list.size-2]), parse(list[list.size-1]))
-    for (i := list.size-3; i >= 0; --i) {
-      ret = Seq(parse(list[i]), ret)
-    }
-    return ret
-  }
+  static Expression seq(Obj[] list) { Seq(list.map { parse(it) }) }
   
   ** Prioritized choice of expressions (e1 / e2 / ... / en).
-  static Expression choice(Obj[] list) {
-    if (2 > list.size) {
-      throw ArgErr("Need a list with 2 or more elements, but got $list")
-    }
-    ret := Choice(parse(list[list.size-2]), parse(list[list.size-1]))
-    for (i := list.size-3; i >= 0; --i) {
-      ret = Choice(parse(list[i]), ret)
-    }
-    return ret
-  }
+  static Expression choice(Obj[] list) { Choice(list.map { parse(it) }) }
   
   ** Character range ([a-z]).
-  static Expression range(Range r) { choice(r.toList.map { T(it.toChar) }) }
+  static Expression range(Range r) { Choice(r.toList.map { T(it.toChar) }) }
   
   ** Optional expression (e?).
-  static Expression opt(Obj e) { Choice(parse(e), Empty.val) }
+  static Expression opt(Obj e) { Choice([parse(e), Empty.val]) }
   
   ** Zero-or-more repetition (e*).
   static Expression rep(Obj e) { Rep(parse(e)) }
   
   ** One-or-more repetition (e+).
-  static Expression rep1(Obj e) { Seq(parse(e), rep(e)) }
+  static Expression rep1(Obj e) { Seq([parse(e), rep(e)]) }
   
   ** Not-predicate (!e).
   static Expression not(Obj e) { Not(parse(e)) }
@@ -126,18 +170,13 @@ internal const class E {
   ** And-predicate (&e).
   static Expression and(Obj e) { not(not(e)) }
 
-  ** Syntax sugar for building grammars manually.
-  ** 1. If 'e' is an expression, it's returned
-  ** 2. If 'e' is a string, 't(e)' is returned
-  ** 3. If 'e' is a list, 'seq(e)' is returned
-  ** 4. If 'e' is a range, 'range(e)' is returned
-  ** 5. Exception thrown otherwise
   private static Expression parse(Obj e) {
     if (e is Expression) {
       return (Expression)e
       
     } else if (e is Str) {
-      return t((Str)e)
+      s := e as Str
+      return s.startsWith("#") ? nt(s[1..<s.size]) : t(s) 
       
     } else if (e is List) {
       return seq((List)e)
@@ -150,4 +189,3 @@ internal const class E {
     }
   }
 }
-

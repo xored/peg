@@ -23,114 +23,84 @@ internal const class MetaGrammar : Grammar
 
   ** Create a map of meta grammar rules.
   private static Str:Expression createMetaRules() {
-    tmp := Str:Expression[:]
+    Str:Expression [
+      
+      // Lexical syntax =========================================================
+      
+      "EndOfFile" : E.not(E.any),
+      
+      "EndOfLine" : E.choice(["\r\n", "\n", "\r"]),
+      
+      "Space" : E.choice([" ", "\t", "#EndOfLine"]),
+      
+      "Comment" : E.seq(["#", E.rep([E.not("#EndOfLine"), E.any]), "#EndOfLine"]),
+      
+      "Spacing" : E.rep(["#Space", "#Comment"]),
+      
+      "DOT" : E.seq([".", "#Spacing"]),
+      
+      "CLOSE" : E.seq([")", "#Spacing"]),
+      
+      "OPEN" : E.seq(["(", "#Spacing"]),
+      
+      "PLUS" : E.seq(["+", "#Spacing"]),
+      
+      "STAR" : E.seq(["*", "#Spacing"]),
+      
+      "QUESTION" : E.seq(["?", "#Spacing"]),
+      
+      "NOT" : E.seq(["!", "#Spacing"]),
+      
+      "AND" : E.seq(["&", "#Spacing"]),
+      
+      "SLASH" : E.seq(["/", "#Spacing"]),
+      
+      "LEFTARROW" : E.seq(["<-", "#Spacing"]),
+      
+      "Char" : E.choice([
+        ["\\", "n", "r", "t", "'", "\"", "[", "]", "\\"],
+        [E.not("\\"), E.any]
+      ]), // TODO: implement character code support such as \213 here
+      
+      "Range" : E.choice([
+        ["#Char", E.t("-"), "#Char"],
+        "#Char"
+      ]),
+      
+      "Class" : E.seq(["[", E.rep(["]", "#Range"]), "]", "#Spacing"]),
+      
+      "Literal" : E.choice([
+        ["'", E.rep([E.not("'"), "#Char"]), "'", "#Spacing"],
+        ["\"", E.rep([E.not("'"), "#Char"]), "\"", "#Spacing"]
+      ]),
+      
+      "IdentStart" : E.seq(['a'..'z', 'A'..'Z', "-"]),
+      
+      "IdentCont" : E.choice(["#IdentStart", '0'..'9']),
+      
+      "Identifier" : E.seq(["#IdentStart", E.rep("#IdentCont"), "#Spacing"]),
+      
+      // Hierarchical syntax ====================================================
     
-    // Lexical syntax =========================================================
-    
-    eof := E.not(E.any)
-    tmp["EndOfFile"] = eof
-    
-    eoln := E.choice(["\r\n", "\n", "\r"])
-    tmp["EndOfLine"] = eoln
-    
-    space := E.choice([" ", "\t", eoln])
-    tmp["Space"] = space
-    
-    comment := E.seq(["#", E.rep([E.not(eoln), E.any]), eoln])
-    tmp["Comment"] = comment
-    
-    spacing := E.rep([space, comment])
-    tmp["Spacing"] = spacing
-    
-    dot := E.seq([".", spacing])
-    tmp["DOT"] = dot
-    
-    close := E.seq([")", spacing])
-    tmp["CLOSE"] = close
-    
-    open := E.seq(["(", spacing])
-    tmp["OPEN"] = open
-    
-    plus := E.seq(["+", spacing])
-    tmp["PLUS"] = plus
-    
-    star := E.seq(["*", spacing])
-    tmp["STAR"] = star
-    
-    question := E.seq(["?", spacing])
-    tmp["QUESTION"] = question
-    
-    not := E.seq(["!", spacing])
-    tmp["NOT"] = not
-    
-    and := E.seq(["&", spacing])
-    tmp["AND"] = and
-    
-    slash := E.seq(["/", spacing])
-    tmp["SLASH"] = slash
-    
-    leftarrow := E.seq(["<-", spacing])
-    tmp["LEFTARROW"] = leftarrow
-
-    char := E.choice([
-      ["\\", "n", "r", "t", "'", "\"", "[", "]", "\\"],
-      [E.not("\\"), E.any]
-    ]) // TODO: implement character code support such as \213 here
-    tmp["Char"] = char
-    
-    range := E.choice([
-      [char, E.t("-"), char],
-      char
-    ])
-    tmp["Range"] = range
-    
-    clazz := E.seq(["[", E.rep(["]", range]), "]", spacing])
-    tmp["Class"] = clazz
-    
-    literal := E.choice([
-      ["'", E.rep([E.not("'"), char]), "'", spacing],
-      ["\"", E.rep([E.not("'"), char]), "\"", spacing]
-    ])
-    tmp["Literal"] = literal
-  
-    identStart := E.seq(['a'..'z', 'A'..'Z', "-"])
-    tmp["IdentStart"] = identStart
-    
-    identCont:= E.choice([identStart, '0'..'9'])
-    tmp["IdentCont"] = identCont
-    
-    identifier := E.seq([identStart, E.rep(identCont), spacing])
-    tmp["Identifier"] = identifier
-    
-    // Hierarchical syntax ====================================================
-    
-    primary := E.choice([
-      [identifier, E.not(leftarrow)],
-      [open, E.nt("Expression"), close],
-      literal,
-      clazz,
-      dot
-    ])
-    tmp["Primary"] = primary
-    
-    suffix := E.seq([primary, E.opt(E.choice([question, star, plus]))])
-    tmp["Suffix"] = suffix
-    
-    prefix := E.seq([E.opt([and, not]), suffix])
-    tmp["Prefix"] = prefix
-    
-    sequence := E.rep(prefix)
-    tmp["Sequence"] = sequence
-    
-    expression := E.seq([sequence, E.rep([slash, sequence])])
-    tmp["Expression"] = expression
-    
-    definition := E.seq([identifier, leftarrow, expression])
-    tmp["Definition"] = definition
-    
-    grammar := E.seq([spacing, E.rep1(definition), eof])
-    tmp["Grammar"] = grammar
-    
-    return tmp
+      "Primary" : E.choice([
+        ["#Identifier", E.not("#LEFTARROW")],
+        ["#OPEN", "#Expression", "#CLOSE"],
+        "#Literal",
+        "#Class",
+        "#DOT"
+      ]),
+      
+      "Suffix" : E.seq(["#Primary", E.opt(E.choice(["#QUESTION", "#STAR", "#PLUS"]))]),
+      
+      "Prefix" : E.seq([E.opt(["#AND", "#NOT"]), "#Suffix"]),
+      
+      "Sequence" : E.rep("#Prefix"),
+      
+      "Expression" : E.seq(["#Sequence", E.rep(["#SLASH", "#Sequence"])]),
+      
+      "Definition" : E.seq(["#Identifier", "#LEFTARROW", "#Expression"]),
+      
+      "Grammar" : E.seq(["#Spacing", E.rep1("#Definition"), "#EndOfFile"])
+    ]
   }
 }
