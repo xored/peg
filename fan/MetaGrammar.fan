@@ -14,11 +14,11 @@ internal const class MetaGrammar : Grammar
 {
   override const Str:Expression rules
   
-  override const Expression start
+  override const Str start
 
   new make() {
     rules = createMetaRules
-    start = rules["Grammar"]
+    start = "Grammar"
   }
 
   ** Create a map of meta grammar rules.
@@ -35,7 +35,7 @@ internal const class MetaGrammar : Grammar
       
       "Comment" : E.seq(["#", E.rep([E.not("#EndOfLine"), E.any]), "#EndOfLine"]),
       
-      "Spacing" : E.rep(["#Space", "#Comment"]),
+      "Spacing" : E.rep(E.choice(["#Space", "#Comment"])),
       
       "DOT" : E.seq([".", "#Spacing"]),
       
@@ -67,14 +67,14 @@ internal const class MetaGrammar : Grammar
         "#Char"
       ]),
       
-      "Class" : E.seq(["[", E.rep(["]", "#Range"]), "]", "#Spacing"]),
+      "Class" : E.seq(["[", E.rep([E.not("]"), "#Range"]), "]", "#Spacing"]),
       
       "Literal" : E.choice([
         ["'", E.rep([E.not("'"), "#Char"]), "'", "#Spacing"],
         ["\"", E.rep([E.not("'"), "#Char"]), "\"", "#Spacing"]
       ]),
       
-      "IdentStart" : E.seq(['a'..'z', 'A'..'Z', "-"]),
+      "IdentStart" : E.choice(['a'..'z', 'A'..'Z', "_"]),
       
       "IdentCont" : E.choice(["#IdentStart", '0'..'9']),
       

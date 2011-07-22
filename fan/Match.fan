@@ -7,13 +7,21 @@ enum class MatchState {
   ** Match failed: wrong text
   fail,
   ** Match failed: not enough text
-  lack; 
+  lack;
 }
 
 @Js
 class Match {
   MatchState state := MatchState.unknown { private set }
   Str info := "" { private set }
+  
+  override Str toStr() {
+    if (info.isEmpty) {
+      return "$state"      
+    } else {
+      return "$state: $info"
+    }    
+  }
   
   internal Void reset() { 
     state = MatchState.unknown 

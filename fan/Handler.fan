@@ -20,3 +20,32 @@ mixin Handler {
   ** rollback can't be called for it anymore.
   abstract Void apply()
 }
+
+** Simple handler, which stores all blocks in a list
+@Js
+class ListHandler : Handler
+{
+  Block[] blocks := [,] { private set }
+  private Int[] sizes := [0]
+  
+  override Void push() { sizes.push(blocks.size) }
+  
+  override Void rollback() { blocks.size = sizes.pop }
+  
+  override Void apply() { sizes.pop }
+  
+  override Void visit(Block block) { blocks.add(block) }
+}
+
+** handler which does nothing. May be used to just check, if a text conforms to the grammar.
+@Js
+class NullHandler : Handler 
+{
+  override Void push() {}
+  
+  override Void rollback() {}
+  
+  override Void apply() {}
+  
+  override Void visit(Block block) {}
+}

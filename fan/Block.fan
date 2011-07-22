@@ -34,7 +34,9 @@ const class Block
   }
   
   ** Returns full name of the rule, i.e. name with optional namespace separated by colon.
-  Str fullName() { namespace.isEmpty ? name : "$namespace:$name" }  
+  Str fullName() { namespace.isEmpty ? name : "$namespace:$name" }
+  
+  override Str toStr() { "Block($fullName, $range)" }
 }
 
 ** Defines tree structure on blocks.

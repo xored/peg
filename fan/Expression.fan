@@ -13,11 +13,15 @@ internal const class Expression
   
   override Bool equals(Obj? other) {
     if (null == other || this.typeof != other.typeof) {
-      echo("Typeof differs: this = $this.typeof, other = $other.typeof")
       return false
     }
     o := other as Expression
-    t := kids == o.kids
+    // don't just check if kids == o.kids, since it will fail
+    // because lists' types difference, which is not what we want
+    t := kids.size == o.kids.size
+    for (i := 0; t && i < kids.size; ++i) {
+      t = kids[i] == o.kids[i]      
+    }
     return t
   }
 }
@@ -47,7 +51,34 @@ internal const class Any : Expression {
 internal const class T : Expression {  
   new make(Str t) : super([t]) {}
   
-  override Str toStr() { "'$kids.first'" }
+  override Str toStr() { 
+    "'" + (kids.first as Str)
+      .replace("\\", "\\\\")
+      .replace("\t", "\\t")
+      .replace("\b", "\\b")
+      .replace("\n", "\\n")
+      .replace("\r", "\\r")
+      .replace("\f", "\\f")
+      .replace("'", "\\'")
+      .replace("\"", "\\\"") + "'"      
+  }
+}
+
+** Range expression. Has one kid, which is a 'Range' represents the range.
+** This is syntax sugar for Choice, but we introduce it as a separate expression,
+** because Choice here would be very slow sometimes. 
+@Js
+internal const class R : Expression {
+  new make(Int first, Int last) : super([first..last]) {
+    if (first > last) {
+      throw ArgErr("Expected first <= last, but got first=$first ($first.toChar), last=$last ($last.toChar)")
+    }
+  }
+  
+  override Str toStr() {
+    r := kids.first as Range
+    return "$r.start.toChar-$r.end.toChar"    
+  }  
 }
 
 ** Non-terminal expression. Has one kid which is a string represents non-terminal symbol. 
@@ -90,12 +121,14 @@ internal const class Choice : Expression {
   
   override Str toStr() {
     b := StrBuf()
+    b.add("(")
     kids.each |k, i| { 
       b.add(k.toStr)
       if (i < kids.size-1) {
         b.add(" / ")
       }
     }
+    b.add(")")
     return b.toStr
   }
 }
@@ -124,7 +157,7 @@ internal const class Not : Expression {
 ** 
 ** 1. If 'e' is an expression, it's returned
 ** 2. If 'e' is a string, ... 
-**    2.1. ...and it starts with #, 'nt(e without #)' is returned
+**    2.1. ...and it starts with # and it's not just "#", 'nt(e without #)' is returned
 **    2.2. 't(e)' is returned otherwise (so, terminals which start with #, must be specified explicitly)
 ** 3. If 'e' is a list, 'seq(e)' is returned
 ** 4. If 'e' is a range, 'range(e)' is returned
@@ -153,7 +186,13 @@ internal const class E {
   static Expression choice(Obj[] list) { Choice(list.map { parse(it) }) }
   
   ** Character range ([a-z]).
-  static Expression range(Range r) { Choice(r.toList.map { T(it.toChar) }) }
+  static Expression range(Range r) { 
+    l := r.toList
+    if (l.isEmpty) {
+      throw ArgErr("Expected non-empty range, but got $r")
+    }
+    return R(l.min, l.max)
+  }
   
   ** Optional expression (e?).
   static Expression opt(Obj e) { Choice([parse(e), Empty.val]) }
@@ -176,7 +215,7 @@ internal const class E {
       
     } else if (e is Str) {
       s := e as Str
-      return s.startsWith("#") ? nt(s[1..<s.size]) : t(s) 
+      return s.startsWith("#") && 1 < s.size ? nt(s[1..<s.size]) : t(s) 
       
     } else if (e is List) {
       return seq((List)e)
