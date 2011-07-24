@@ -4,8 +4,12 @@ class PegExample
   static Void main(Str[] args) {
     lh := ListHandler()
     p := Parser(MetaGrammar(), lh)
-    in := "A <- !a" // TODO: this fails
-    p.run(in.toBuf, true)
+    in := "A <- a #comment\n"
+    wholeBuf := in.toBuf
+    subBuf := wholeBuf[0..2]
+    p.run(subBuf, false)
+    p.run(wholeBuf, false)
+    p.run(wholeBuf, true)
     echo("Result is $p.match")
     echo("Blocks: " + lh.blocks)
     echo("Stack:")

@@ -45,6 +45,7 @@ class Parser
   This run(Buf buf, Bool finished := true) {
     this.buf = buf
     this.finished = finished
+    match.reset
     
     while (!stack.isEmpty) {
       step

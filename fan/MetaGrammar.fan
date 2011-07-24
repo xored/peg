@@ -92,7 +92,7 @@ internal const class MetaGrammar : Grammar
       
       "Suffix" : E.seq(["#Primary", E.opt(E.choice(["#QUESTION", "#STAR", "#PLUS"]))]),
       
-      "Prefix" : E.seq([E.opt(["#AND", "#NOT"]), "#Suffix"]),
+      "Prefix" : E.seq([E.opt(E.choice(["#AND", "#NOT"])), "#Suffix"]),
       
       "Sequence" : E.rep("#Prefix"),
       
