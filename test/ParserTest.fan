@@ -7,6 +7,9 @@ class ParserTest : Test
     wholeTest("A <- .", ["DOT" : 5..<6])
     wholeTest("A <- a")
     wholeTest("A <- 'a'", ["Literal" : 5..<8])
+    wholeTest("A <- '\\n'", ["Char" : 6..<8])
+    wholeTest("A <- \"\\n\"", ["Char" : 6..<8])
+    wholeTest("A <- \"a\"", ["Literal" : 5..<8])
     wholeTest("A <- [a-z]", ["Class" : 5..<10])
     wholeTest("A <- a b", ["Sequence" : 5..<8])
     wholeTest("A <- a / b", ["SLASH" : 7..<9])
@@ -21,6 +24,9 @@ class ParserTest : Test
     multiTest("A <- .", ["DOT" : 5..<6])
     multiTest("A <- a")
     multiTest("A <- 'a'", ["Literal" : 5..<8])
+    multiTest("A <- \"a\"", ["Literal" : 5..<8])
+    multiTest("A <- '\\n'", ["Char" : 6..<8])
+    multiTest("A <- \"\\n\"", ["Char" : 6..<8])
     multiTest("A <- [a-z]", ["Class" : 5..<10])
     multiTest("A <- a b", ["Sequence" : 5..<8])
     multiTest("A <- a / b", ["SLASH" : 7..<9])
@@ -28,6 +34,9 @@ class ParserTest : Test
     multiTest("A <- !a", ["NOT" : 5..<6])
     multiTest("A <- &a", ["AND" : 5..<6])
     multiTest("A <- a #comment\n", ["Comment" : 7..<16]) // comment must end with EOLN
+    
+    // TODO: need tests for special cases (when "lack" + "finished" state are
+    // handled specially in Parser, e.g. t(), choice(), rep(), etc)
   }
   
   private Void wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar()) {

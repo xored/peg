@@ -211,7 +211,7 @@ class Parser
         pop
         if (0 == predicate) {
           // visit block, only if we're not under predicate
-          handler.visit(Block(name, r.startPos..<buf.pos))
+          handler.visit(BlockImpl(name, r.startPos..<buf.pos))
         }
     }    
   }

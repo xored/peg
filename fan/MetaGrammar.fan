@@ -10,16 +10,9 @@
 // So, to avoid hard bugs, let the meta grammar be a normal class.
 // Performance overhead is not important.
 @Js
-internal const class MetaGrammar : Grammar
+internal const class MetaGrammar : GrammarImpl
 {
-  override const Str:Expression rules
-  
-  override const Str start
-
-  new make() {
-    rules = createMetaRules
-    start = "Grammar"
-  }
+  new make() : super(createMetaRules, "Grammar") {}
 
   ** Create a map of meta grammar rules.
   private static Str:Expression createMetaRules() {
@@ -58,7 +51,7 @@ internal const class MetaGrammar : Grammar
       "LEFTARROW" : E.seq(["<-", "#Spacing"]),
       
       "Char" : E.choice([
-        ["\\", "n", "r", "t", "'", "\"", "[", "]", "\\"],
+        ["\\", E.choice(["n", "r", "t", "'", "\"", "[", "]", "\\"])],
         [E.not("\\"), E.any]
       ]), // TODO: implement character code support such as \213 here
       
@@ -71,7 +64,7 @@ internal const class MetaGrammar : Grammar
       
       "Literal" : E.choice([
         ["'", E.rep([E.not("'"), "#Char"]), "'", "#Spacing"],
-        ["\"", E.rep([E.not("'"), "#Char"]), "\"", "#Spacing"]
+        ["\"", E.rep([E.not("\""), "#Char"]), "\"", "#Spacing"]
       ]),
       
       "IdentStart" : E.choice(['a'..'z', 'A'..'Z', "_"]),

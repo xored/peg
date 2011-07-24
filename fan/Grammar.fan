@@ -14,3 +14,15 @@ internal const mixin Grammar
   abstract Str start()
   
 }
+
+@Js
+internal const class GrammarImpl : Grammar 
+{  
+  override const Str:Expression rules  
+  override const Str start
+  
+  new make(Str:Expression rules, Str start) {
+    this.rules = rules
+    this.start = start
+  }  
+}
