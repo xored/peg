@@ -47,7 +47,7 @@ class ParserTest : Test
     // handled specially in Parser, e.g. t(), choice(), rep(), etc)
   }
   
-  Void testParseAsTree() {
+  Void testTree() {
     grammarText := 
       "Number <- ((Real / Int) ' '?)* !. 
        Part <- [0-9]+ 
@@ -55,7 +55,7 @@ class ParserTest : Test
        Real <- Part '.' Part"
     input := "75 33.23 11"
     
-    root := Parser.parseAsTree(grammarText, input.toBuf)
+    root := Parser.tree(grammarText, input.toBuf)
     ints := Str[,]
     reals := Str[,]
     traverse(root) |Block b| {

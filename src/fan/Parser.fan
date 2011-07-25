@@ -15,6 +15,11 @@ internal class StackRecord {
   override Str toStr() { "{ index=$index, startPos=$startPos, e=$e }" }
 }
 
+** Main class, allows to parse inputs using given grammars.
+** 
+** Please note, that before version 1.0 every non-static public slots of this class
+** are the subject to change. If you want to ensure your code will be compatible
+** with later versions, use static part of the API only. 
 @Js
 class Parser
 {
@@ -39,7 +44,7 @@ class Parser
   ** Parses the given input with grammar described by the given grammar text.
   ** Returns the root node of the parsed tree.
   ** If parsing fails, ParseErr is thrown.
-  static BlockNode parseAsTree(Str grammar, Buf in) {
+  static BlockNode tree(Str grammar, Buf in) {
     g := parseGrammar(grammar)
     lh := ListHandler()
     p := Parser(g, lh).run(in)

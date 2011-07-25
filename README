@@ -3,5 +3,7 @@ The implementation of PEG parser in fantom (http://fantom.org/).
 The main resources about PEG:
   * http://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf
   * http://en.wikipedia.org/wiki/Parsing_expression_grammar
-  
-Guranteed to build against fantom-1.0.59.
+
+Attention! Every public API besides Block and BlockNode mixins and static slots of Parser class
+are the subject to change until version 1.0 is released. If you want your code to be compatible
+with future versions, don't use anything besides described above. 

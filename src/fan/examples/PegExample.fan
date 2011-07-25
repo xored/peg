@@ -9,7 +9,7 @@ class PegExample
        Real <- Part '.' Part"
     input := "75 33.23 11"
     
-    root := Parser.parseAsTree(grammarText, input.toBuf)
+    root := Parser.tree(grammarText, input.toBuf)
     traverse(root, input, 0)
   }
   
