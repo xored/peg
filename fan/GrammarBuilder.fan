@@ -215,11 +215,9 @@ internal class GrammarBuilder
   
   private Expression dot() {
     b := pop("DOT")
-    if (1 != b.range.toList.size) {
-      throw ArgErr("Expected DOT block with size 1, but got $b")
-    }
-    if ('.' != text[b.range.min]) {
-      throw ArgErr("Expected '.' symbol at $b.range.min position in the text, but got ${text[b.range.min]}")
+    dt := text[b.range]
+    if ('.' != dt[0]) {
+      throw ArgErr("Expected '.' symbol at $b.range.min position in the text, but got ${dt[0]}")
     }    
     return E.any
   }

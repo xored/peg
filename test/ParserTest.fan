@@ -17,6 +17,10 @@ class ParserTest : Test
     wholeTest("A <- !a", ["NOT" : 5..<6])
     wholeTest("A <- &a", ["AND" : 5..<6])
     wholeTest("A <- a #comment\n", ["Comment" : 7..<16]) // comment must end with EOLN
+    wholeTest("A <- !. #comment\n", ["Comment" : 8..<17])
+    wholeTest("# Comment
+               
+               A <- !.")
   }
   
   Void testMultiRun() {
@@ -34,9 +38,36 @@ class ParserTest : Test
     multiTest("A <- !a", ["NOT" : 5..<6])
     multiTest("A <- &a", ["AND" : 5..<6])
     multiTest("A <- a #comment\n", ["Comment" : 7..<16]) // comment must end with EOLN
+    multiTest("A <- !. #comment\n", ["Comment" : 8..<17])
+    multiTest("# Comment
+               
+               A <- !.")
     
     // TODO: need tests for special cases (when "lack" + "finished" state are
     // handled specially in Parser, e.g. t(), choice(), rep(), etc)
+  }
+  
+  Void testParseAsTree() {
+    grammarText := 
+      "Number <- ((Real / Int) ' '?)* !. 
+       Part <- [0-9]+ 
+       Int <- Part
+       Real <- Part '.' Part"
+    input := "75 33.23 11"
+    
+    root := Parser.parseAsTree(grammarText, input.toBuf)
+    ints := Str[,]
+    reals := Str[,]
+    traverse(root) |Block b| {
+      if ("Int" == b.name) {
+        ints.add(input[b.range])
+      }
+      if ("Real" == b.name) {
+        reals.add(input[b.range])
+      }
+    }
+    verifyEq(ints, ["75", "11"])
+    verifyEq(reals, ["33.23"])
   }
   
   private Void wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar()) {
@@ -63,6 +94,11 @@ class ParserTest : Test
       b := lh.blocks.find { it.name == n }
       verifyEq(b?.range, r)
     }
+  }
+  
+  private static Void traverse(BlockNode node, |Block| f) {
+    f(node.block)
+    node.kids.each { traverse(it, f) }
   }
   
 }
