@@ -10,15 +10,18 @@ class PegExample
     input := "75 33.23 11"
     
     root := Parser.parseAsTree(grammarText, input.toBuf)
-    traverse(root, input)
+    traverse(root, input, 0)
   }
   
-  private static Void traverse(BlockNode node, Str input) {
-    n := node.block.name
-    if ("Int" == n || "Real" == n) {
-      echo("Number: ${input[node.block.range]}, type: $n")      
-    }
-    node.kids.each { traverse(it, input) }
+  private static Void traverse(BlockNode node, Str input, Int indent) {
+    sb := StrBuf()
+    indent.times { sb.add(" ") }
+    sb.add("Type: ")
+    sb.add(node.block.name)
+    sb.add(", content: ")
+    sb.add(input[node.block.range])
+    echo(sb)
+    node.kids.each { traverse(it, input, indent+1) }
   }
   
   private static Void parseGrammar(Str in) {
