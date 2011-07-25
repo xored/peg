@@ -49,36 +49,52 @@ internal const class Any : Expression {
 ** Terminal expression. Has one kid, which is a string represents terminal symbol. 
 @Js
 internal const class T : Expression {  
-  new make(Str t) : super([t]) {}
+  new make(Str t) : super([t]) {
+    if (t.isEmpty) {
+      throw ArgErr("Empty terminal symbol")
+    }
+  }
   
   override Str toStr() { 
     "'" + (kids.first as Str)
       .replace("\\", "\\\\")
       .replace("\t", "\\t")
-      .replace("\b", "\\b")
       .replace("\n", "\\n")
       .replace("\r", "\\r")
-      .replace("\f", "\\f")
       .replace("'", "\\'")
       .replace("\"", "\\\"") + "'"      
   }
 }
 
-** Range expression. Has one kid, which is a 'Range' represents the range.
+** Class expression. Each kids is a non-empty character range (but can have ranges with 1 element). 
 ** This is syntax sugar for Choice, but we introduce it as a separate expression,
 ** because Choice here would be very slow sometimes. 
 @Js
-internal const class R : Expression {
-  new make(Int first, Int last) : super([first..last]) {
-    if (first > last) {
-      throw ArgErr("Expected first <= last, but got first=$first ($first.toChar), last=$last ($last.toChar)")
+internal const class Class : Expression {
+  new make(Range[] ranges) : super(ranges) {
+    ranges.each {
+      if (it.isEmpty) {
+        throw ArgErr("Class can't have empty range $it")
+      }
     }
   }
   
   override Str toStr() {
-    r := kids.first as Range
-    return "$r.start.toChar-$r.end.toChar"    
-  }  
+    sb := StrBuf()
+    sb.add("[")
+    kids.each {
+      r := it as Range
+      min := r.min
+      max := r.max
+      sb.add(min.toChar)
+      if (min < max) {
+        sb.add("-")
+        sb.add(max.toChar)
+      }
+    }
+    sb.add("]")
+    return sb.toStr
+  }
 }
 
 ** Non-terminal expression. Has one kid which is a string represents non-terminal symbol. 
@@ -185,13 +201,20 @@ internal const class E {
   ** Prioritized choice of expressions (e1 / e2 / ... / en).
   static Expression choice(Obj[] list) { Choice(list.map { parse(it) }) }
   
-  ** Character range ([a-z]).
-  static Expression range(Range r) { 
-    l := r.toList
-    if (l.isEmpty) {
-      throw ArgErr("Expected non-empty range, but got $r")
+  ** Character class ([a-z]).
+  static Expression clazz(Obj[] ranges) {
+    rl := Range[,]
+    ranges.each {
+      if (it is Range) {
+        rl.add((Range)it)
+      } else if (it is Int) {
+        i := it as Int
+        rl.add(i..i)
+      } else {
+        throw ArgErr("Expected Int or Range, but got $it.typeof: $it")
+      }
     }
-    return R(l.min, l.max)
+    return Class(rl)    
   }
   
   ** Optional expression (e?).
@@ -221,7 +244,7 @@ internal const class E {
       return seq((List)e)
       
     } else if (e is Range) {
-      return range((Range)e)
+      return clazz([e as Range])
       
     } else {
       throw ArgErr("Invalid argument: type is $e.typeof, value: $e")

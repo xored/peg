@@ -20,7 +20,7 @@ internal class GrammarBuilder
   
   private static Block[] skipUnused(Block[] blocks) {
     ret := Block[,]
-    skip := Str:Str ["EndOfLine":"", "Space":"", "Comment":"", "Spacing":"", "IdentStart":"", "IdentCont":"", "Char":""]
+    skip := Str:Str ["EndOfLine":"", "Space":"", "Comment":"", "Spacing":"", "IdentStart":"", "IdentCont":""]
     blocks.each {
       if (null == skip[it.name]) {
         ret.add(it)
@@ -65,7 +65,7 @@ internal class GrammarBuilder
     if (lastNt.isEmpty) {
       throw ArgErr("No rules found. Grammar can't be empty.")
     }
-    return GrammarImpl(rules, lastNt)
+    return GrammarImpl(lastNt, rules)
   }
   
   private Void definition() {
@@ -97,7 +97,7 @@ internal class GrammarBuilder
     if (elist.isEmpty) {
       elist.add(E.empty)
     }
-    return 1 == elist.size ? elist.first : E.seq(elist) 
+    return 1 == elist.size ? elist.first : E.seq(elist.reverse) 
   }
   
   private Expression prefix() {
@@ -156,86 +156,61 @@ internal class GrammarBuilder
   
   private Expression literal() {
     b := pop("Literal")
-    if (b.range.isEmpty) {
-      throw ArgErr("Got empty literal at ${blocks.size} index")      
+    bi := blocks.size
+    sb := StrBuf()
+    while ("Char" == blocks.peek.name) {
+      sb.insert(0, text[pop("Char").range])
     }
-    quote := text[b.range.min]
-    if ('\'' != quote && '"' != quote) {
-      throw ArgErr("Expected either ' or \" at $b.range.min position in the text, but got $quote")
+    t := refine(sb.toStr)
+    if (t.isEmpty) {
+      throw ArgErr("Got empty literal at $b.range range in the text, block index: $bi")
     }
-    if (quote != text[b.range.max]) {
-      throw ArgErr("Expected $quote at $b.range.max position in the text, but got ${text[b.range.max]}")
-    }
-    start := b.range.min + 1
-    end := b.range.max - 1
-    if (start >= end) {
-      throw ArgErr("Expected non-empty literal range (without quotes) at $blocks.size position, but got start=$start, end=$end")
-    }
-    return E.t(refine(text[start..end]))
+    return E.t(t)
   }
   
   private Str refine(Str text) {
-    // TODO: check this refinement!
     text
       .replace("\\\\", "\\")
       .replace("\\t", "\t")
-      .replace("\\b", "\b")
       .replace("\\n", "\n")
       .replace("\\r", "\r")
-      .replace("\\f", "\f")
       .replace("\\'", "'")
+      .replace("\\[", "[")
+      .replace("\\]", "]")
       .replace("\\\"", "\"")      
   }
   
   private Expression clazz() {
     pop("Class")
-    elist := Expression[,]
+    rl := Range[,]
     while("Range" == blocks.peek.name) {
-      elist.add(range)
+      rl.add(range)
     }
-    if (elist.isEmpty) {
+    if (rl.isEmpty) {
       throw ArgErr("Got empty Class expression at $blocks.size index")
     }
-    return 1 == elist.size ? elist.first : E.choice(elist)
+    return E.clazz(rl.reverse)
   }
   
-  private Expression range() {
+  private Range range() {
     b := pop("Range")
-    if (b.range.isEmpty) {
-      throw ArgErr("Got empty range at at $blocks.size index")
+    bc := pop("Char")
+    c := refine(text[bc.range])
+    if (1 != c.size) {
+      throw ArgErr("Expected a single character at $bc.range interval in the text, but got ${text[bc.range]}")
     }
-    t := text[b.range]
-    hyphensCount := 0
-    hyphenIndex := -1
-    t.each |c, i| {
-      if ('-' == c) {
-        ++hyphenIndex
-        if (3 > hyphensCount) {
-          hyphenIndex = i
-        }
+    if ("Char" == blocks.peek.name) {
+      // range of a-z form
+      bs := pop("Char")
+      s := refine(text[bs.range])
+      if (1 != s.size) {
+        throw ArgErr("Expected a single character at $bs.range interval in the text, but got ${text[bs.range]}")
       }
-    }
-    if (3 < hyphensCount) {
-      throw ArgErr("Invalid Range expression $t (block with $blocks.size index)")
-    }
-    Expression? e := null
-    if (-1 != hyphenIndex) {
-      // range is in 'a-z' form
-      c1 := refine(t[0..<hyphenIndex])
-      c2 := refine(t[hyphenIndex+1..t.size])
-      if (1 != c1.size || 1 != c2.size) {
-        throw ArgErr("Expected one symbol before and after -, but got $t")
-      }
-      e = E.range(c1[0]..c2[0])
+      return s[0]..c[0]
     } else {
-      // range is just a single char
-      c := refine(t)
-      if (1 != c.size) {
-        throw ArgErr("Expected a single char, but got $t")
-      }
-      e = E.t(c)
+      // single-char range      
+      return c[0]..c[0]
     }
-    return e
   }
   
   private Expression dot() {

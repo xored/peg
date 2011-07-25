@@ -94,8 +94,8 @@ class Parser
       any
     } else if (r.e is T) {
       t
-    } else if (r.e is R) {
-      this.r
+    } else if (r.e is Class) {
+      clazz
     } else if (r.e is Nt) {
       nt
     } else if (r.e is Seq) {
@@ -161,9 +161,9 @@ class Parser
     }
   }
   
-  ** Handles range
-  private Void r() {
-    verify(MatchState.unknown == match.state, "Unexpected state for 'range' expression: $match.state")
+  ** handles class
+  private Void clazz() {
+    verify(MatchState.unknown == match.state, "Unexpected state for 'class' expression: $match.state")
     r := stack.peek
     if (buf.more) {
       // A char may consist of several bytes.
@@ -172,17 +172,21 @@ class Parser
       
       oldPos := buf.pos
       c := buf.readChar
-      ok := (r.e.kids.first as Range).contains(c)
+      rl := r.e.kids as Range[]
+      ok := false
+      for (i := 0; !ok && i < rl.size; ++i) {
+        ok = rl[i].contains(c)
+      }
       if (!ok) {
         buf.seek(oldPos)
       }
-      match.set(ok, "Expected char from range '$r.e' at pos $buf.pos, but got '$c.toChar'")
+      match.set(ok, "Expected char from class '$r' at pos $buf.pos, but got '$c.toChar'")
       pop
     } else if (finished) {
-      match.set(false, "Expected char from range '$r.e' at pos $buf.pos, but got EOF")
+      match.set(false, "Expected char from class '$r' at pos $buf.pos, but got EOF")
       pop
     } else {
-      match.lack("range $r.e at $buf.pos position")
+      match.lack("class $r at $buf.pos position")
     }
   }
   

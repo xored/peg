@@ -12,7 +12,7 @@
 @Js
 internal const class MetaGrammar : GrammarImpl
 {
-  new make() : super(createMetaRules, "Grammar") {}
+  new make() : super("Grammar", createMetaRules) {}
 
   ** Create a map of meta grammar rules.
   private static Str:Expression createMetaRules() {
@@ -67,7 +67,7 @@ internal const class MetaGrammar : GrammarImpl
         ["\"", E.rep([E.not("\""), "#Char"]), "\"", "#Spacing"]
       ]),
       
-      "IdentStart" : E.choice(['a'..'z', 'A'..'Z', "_"]),
+      "IdentStart" : E.clazz(['a'..'z', 'A'..'Z', '_']),
       
       "IdentCont" : E.choice(["#IdentStart", '0'..'9']),
       

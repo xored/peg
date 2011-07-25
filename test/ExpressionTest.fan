@@ -14,7 +14,7 @@ class ExpressionTest : Test
     verifyEq(E.not(E.t("0")), Not(E.t("0")))
     
     // desugaring
-    verifyEq(E.range('0'..'1'), R('0', '1'))
+    verifyEq(E.clazz(['0'..'1']), Class(['0'..'1']))
     verifyEq(E.opt(E.t("0")), Choice([E.t("0"), E.empty]))
     verifyEq(E.rep1(E.t("0")), Seq([E.t("0"), Rep(E.t("0"))]))
     verifyEq(E.and(E.t("0")), Not(Not(E.t("0"))))
@@ -26,7 +26,7 @@ class ExpressionTest : Test
     verifyEq(E.seq([["t", "#nt"], "t"]), Seq([Seq([T("t"), Nt("nt")]), T("t")]))
     verifyEq(E.choice([["t", "#nt"], "t"]), Choice([Seq([T("t"), Nt("nt")]), T("t")]))
     
-    verifyEq(E.rep('a'..'b'), Rep(R('a', 'b')))
+    verifyEq(E.rep('a'..'b'), Rep(Class(['a'..'b'])))
   }
   
 }
