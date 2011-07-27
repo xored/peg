@@ -3,6 +3,7 @@
 ** This grammar is described in the original PEG paper 
 ** (http://pdos.csail.mit.edu/~baford/packrat/popl04/).
 ** Non-terminals symbols are the same as in the paper.
+** However, the grammar is modified slightly to make parsing easier.
 
 // Actually, meta grammar should be a singleton. 
 // But Fantom has troubles with static variables initialization order 
@@ -30,25 +31,25 @@ internal const class MetaGrammar : GrammarImpl
       
       "Spacing" : E.rep(E.choice(["#Space", "#Comment"])),
       
-      "DOT" : E.seq([".", "#Spacing"]),
+      "DOT" : E.t("."),
       
-      "CLOSE" : E.seq([")", "#Spacing"]),
+      "CLOSE" : E.t(")"),
       
-      "OPEN" : E.seq(["(", "#Spacing"]),
+      "OPEN" : E.t("("),
       
-      "PLUS" : E.seq(["+", "#Spacing"]),
+      "PLUS" : E.t("+"),
       
-      "STAR" : E.seq(["*", "#Spacing"]),
+      "STAR" : E.t("*"),
       
-      "QUESTION" : E.seq(["?", "#Spacing"]),
+      "QUESTION" : E.t("?"),
       
-      "NOT" : E.seq(["!", "#Spacing"]),
+      "NOT" : E.t("!"),
       
-      "AND" : E.seq(["&", "#Spacing"]),
+      "AND" : E.t("&"),
       
-      "SLASH" : E.seq(["/", "#Spacing"]),
+      "SLASH" : E.t("/"),
       
-      "LEFTARROW" : E.seq(["<-", "#Spacing"]),
+      "LEFTARROW" : E.t("<-"),
       
       "Char" : E.choice([
         ["\\", E.choice(["n", "r", "t", "'", "\"", "[", "]", "\\"])],
@@ -60,38 +61,41 @@ internal const class MetaGrammar : GrammarImpl
         "#Char"
       ]),
       
-      "Class" : E.seq(["[", E.rep([E.not("]"), "#Range"]), "]", "#Spacing"]),
+      "Class" : E.seq(["[", E.rep([E.not("]"), "#Range"]), "]"]),
       
       "Literal" : E.choice([
-        ["'", E.rep([E.not("'"), "#Char"]), "'", "#Spacing"],
-        ["\"", E.rep([E.not("\""), "#Char"]), "\"", "#Spacing"]
+        ["'", E.rep([E.not("'"), "#Char"]), "'"],
+        ["\"", E.rep([E.not("\""), "#Char"]), "\""]
       ]),
       
       "IdentStart" : E.clazz(['a'..'z', 'A'..'Z', '_']),
       
       "IdentCont" : E.choice(["#IdentStart", '0'..'9']),
       
-      "Identifier" : E.seq(["#IdentStart", E.rep("#IdentCont"), "#Spacing"]),
+      "Identifier" : E.seq(["#IdentStart", E.rep("#IdentCont")]),
       
       // Hierarchical syntax ====================================================
     
-      "Primary" : E.choice([
-        ["#Identifier", E.not("#LEFTARROW")],
-        ["#OPEN", "#Expression", "#CLOSE"],
-        "#Literal",
-        "#Class",
-        "#DOT"
+      "Primary" : E.seq([
+        E.choice([
+          ["#Identifier", "#Spacing", E.not("#LEFTARROW")],
+          ["#OPEN", "#Spacing", "#Expression", "#CLOSE"],
+          "#Literal",
+          "#Class",
+          "#DOT"
+        ]),
+        "#Spacing"
       ]),
       
-      "Suffix" : E.seq(["#Primary", E.opt(E.choice(["#QUESTION", "#STAR", "#PLUS"]))]),
+      "Suffix" : E.seq(["#Primary", E.opt([E.choice(["#QUESTION", "#STAR", "#PLUS"]), "#Spacing"])]),
       
-      "Prefix" : E.seq([E.opt(E.choice(["#AND", "#NOT"])), "#Suffix"]),
+      "Prefix" : E.seq([E.opt([E.choice(["#AND", "#NOT"]), "#Spacing"]), "#Suffix"]),
       
       "Sequence" : E.rep("#Prefix"),
       
-      "Expression" : E.seq(["#Sequence", E.rep(["#SLASH", "#Sequence"])]),
+      "Expression" : E.seq(["#Sequence", E.rep(["#SLASH", "#Spacing", "#Sequence"])]),
       
-      "Definition" : E.seq(["#Identifier", "#LEFTARROW", "#Expression"]),
+      "Definition" : E.seq(["#Identifier", "#Spacing", "#LEFTARROW", "#Spacing", "#Expression"]),
       
       "Grammar" : E.seq(["#Spacing", E.rep1("#Definition"), "#EndOfFile"])
     ]

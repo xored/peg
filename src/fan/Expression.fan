@@ -1,7 +1,7 @@
 
 ** General parsing expression. 
 @Js
-internal const class Expression
+const class Expression
 {
   const Obj[] kids
   
@@ -28,7 +28,7 @@ internal const class Expression
 
 ** Empty expression. Has no kids.
 @Js
-internal const class Empty : Expression {
+const class Empty : Expression {
   static const Empty val := Empty()
   
   private new make() : super() {}
@@ -38,7 +38,7 @@ internal const class Empty : Expression {
 
 ** Any char (.). Has no kids.
 @Js
-internal const class Any : Expression {
+const class Any : Expression {
   static const Any val := Any()
   
   private new make() : super() {}
@@ -48,15 +48,17 @@ internal const class Any : Expression {
 
 ** Terminal expression. Has one kid, which is a string represents terminal symbol. 
 @Js
-internal const class T : Expression {  
+const class T : Expression {
   new make(Str t) : super([t]) {
     if (t.isEmpty) {
       throw ArgErr("Empty terminal symbol")
     }
   }
   
+  Str symbol() { (Str)kids.first }
+  
   override Str toStr() { 
-    "'" + (kids.first as Str)
+    "'" + symbol
       .replace("\\", "\\\\")
       .replace("\t", "\\t")
       .replace("\n", "\\n")
@@ -70,7 +72,7 @@ internal const class T : Expression {
 ** This is syntax sugar for Choice, but we introduce it as a separate expression,
 ** because Choice here would be very slow sometimes. 
 @Js
-internal const class Class : Expression {
+const class Class : Expression {
   new make(Range[] ranges) : super(ranges) {
     ranges.each {
       if (it.isEmpty) {
@@ -86,28 +88,39 @@ internal const class Class : Expression {
       r := it as Range
       min := r.min
       max := r.max
-      sb.add(min.toChar)
+      sb.add(refine(min.toChar))
       if (min < max) {
         sb.add("-")
-        sb.add(max.toChar)
+        sb.add(refine(max.toChar))
       }
     }
     sb.add("]")
     return sb.toStr
   }
+  
+  private static Str refine(Str s) {
+    s.replace("\\", "\\\\")
+      .replace("\t", "\\t")
+      .replace("\n", "\\n")
+      .replace("\r", "\\r")
+      .replace("'", "\\'")
+      .replace("\"", "\\\"")
+  }
 }
 
 ** Non-terminal expression. Has one kid which is a string represents non-terminal symbol. 
 @Js
-internal const class Nt : Expression {
+const class Nt : Expression {
   new make(Str name) : super([name]) {}
+  
+  Str symbol() { (Str)kids.first }
   
   override Str toStr() { "$kids.first" }
 }
 
 ** Sequence expression. Kids are sub-expressions.
 @Js
-internal const class Seq : Expression {
+const class Seq : Expression {
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
       throw ArgErr("Need a list with 2 or more elements, but got $list")
@@ -128,7 +141,7 @@ internal const class Seq : Expression {
 
 ** Choice expression. Kids are expressions choices.
 @Js
-internal const class Choice : Expression {  
+const class Choice : Expression {  
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
       throw ArgErr("Need a list with 2 or more elements, but got $list")
@@ -151,7 +164,7 @@ internal const class Choice : Expression {
 
 ** Repetition (e*) expression. Has one kid, which is an expression to repeat.
 @Js
-internal const class Rep : Expression {
+const class Rep : Expression {
   new make(Expression e) : super([e]) {}
   
   override Str toStr() { "${kids.first}*" }
@@ -159,7 +172,7 @@ internal const class Rep : Expression {
 
 ** Not-predicate expression. Has one kid which is an expression to check.
 @Js
-internal const class Not : Expression {
+const class Not : Expression {
   new make(Expression e) : super([e]) {}
   
   override Str toStr() { "!$kids.first" }
@@ -179,7 +192,7 @@ internal const class Not : Expression {
 ** 4. If 'e' is a range, 'range(e)' is returned
 ** 5. Exception is thrown otherwise
 @Js
-internal const class E {
+const class E {
   
   private new make() {}
   

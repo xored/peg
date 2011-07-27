@@ -56,6 +56,21 @@ internal const class BlockNodeImpl : BlockNode
     }
   }
 
+  override Str toStr() {
+    sb := StrBuf()
+    print(this, sb, 0)
+    return sb.toStr
+  }
+  
+  private static Void print(BlockNode node, StrBuf sb, Int indent) {
+    indent.times { sb.add("  ") }
+    sb.add(node.block)
+    sb.add(", kids: ")
+    sb.add(node.kids.size)
+    sb.add("\n")
+    node.kids.each { print(it, sb, indent + 1) }
+  }
+
   ** Constructs BlockNode tree from the given block list.
   static BlockNode fromList(Block[] blocks) {
     if (blocks.isEmpty) {
@@ -72,10 +87,11 @@ internal const class BlockNodeImpl : BlockNode
   
   private static Int fillKids(BlockNode parent, Block[] blocks, Int index, BlockNode[] kids) {
     i := index
+    pr := parent.block.range
     while (0 <= i) {
       t := blocks[i]
-      cmin := parent.block.range.contains(t.range.min)
-      cmax := parent.block.range.contains(t.range.max)
+      cmin := pr.start <= t.range.start && t.range.start <= pr.end      
+      cmax := pr.start <= t.range.end && t.range.end <= pr.end 
       if (cmin && cmax) {
         kids.add(BlockNodeImpl {
           block = t
@@ -84,11 +100,8 @@ internal const class BlockNodeImpl : BlockNode
           i = fillKids(it, blocks, i-1, tk)
           it.kids = tk.reverse
         })
-      } else if (!cmin && !cmax) {
-        break
       } else {
-        // cmin != cmax
-        throw ArgErr("Blocks $t and $parent.block intersect")
+        break
       }
     }
     return i    

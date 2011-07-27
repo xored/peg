@@ -17,7 +17,7 @@ class Match {
   
   override Str toStr() {
     if (info.isEmpty) {
-      return "$state"      
+      return "$state"
     } else {
       return "$state: $info"
     }    

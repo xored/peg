@@ -1,11 +1,14 @@
 
 ** Grammar is a set of expression associated with non-terminal symbols and the starting expression. 
 @Js
-internal const mixin Grammar
+const mixin Grammar
 {
   
-  ** Matches non-terminal symbols of the grammar (keys) with corresponding expressions (values).
-  abstract Str:Expression rules()
+  ** Returns an expression associated with the given nonterminal, or 'null', if not found.
+  @Operator abstract Expression? get(Str nonterminal)
+
+  ** Returns all nonterminals in the grammar. The list returned should be immutable.
+  abstract Str[] nonterminals()
   
   ** Non-terminal, which denotes starting expression of the grammar.
   ** 
@@ -16,15 +19,20 @@ internal const mixin Grammar
 }
 
 @Js
-internal const class GrammarImpl : Grammar 
+const class GrammarImpl : Grammar 
 {  
-  override const Str:Expression rules  
+  private const Str:Expression rules
+  
   override const Str start
   
   new make(Str start, Str:Expression rules) {
     this.rules = rules
     this.start = start
   }
+  
+  @Operator override Expression? get(Str nonterminal) { rules[nonterminal] }
+  
+  override Str[] nonterminals() { rules.keys }
   
   override Str toStr() {
     sb := StrBuf()

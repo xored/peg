@@ -12,7 +12,7 @@ class ParserTest : Test
     wholeTest("A <- \"a\"", ["Literal" : 5..<8])
     wholeTest("A <- [a-z]", ["Class" : 5..<10])
     wholeTest("A <- a b", ["Sequence" : 5..<8])
-    wholeTest("A <- a / b", ["SLASH" : 7..<9])
+    wholeTest("A <- a / b", ["SLASH" : 7..<8])
     wholeTest("A <- a*", ["STAR" : 6..<7])
     wholeTest("A <- !a", ["NOT" : 5..<6])
     wholeTest("A <- &a", ["AND" : 5..<6])
@@ -33,7 +33,7 @@ class ParserTest : Test
     multiTest("A <- \"\\n\"", ["Char" : 6..<8])
     multiTest("A <- [a-z]", ["Class" : 5..<10])
     multiTest("A <- a b", ["Sequence" : 5..<8])
-    multiTest("A <- a / b", ["SLASH" : 7..<9])
+    multiTest("A <- a / b", ["SLASH" : 7..<8])
     multiTest("A <- a*", ["STAR" : 6..<7])
     multiTest("A <- !a", ["NOT" : 5..<6])
     multiTest("A <- &a", ["AND" : 5..<6])
@@ -47,12 +47,18 @@ class ParserTest : Test
     // handled specially in Parser, e.g. t(), choice(), rep(), etc)
   }
   
+  Void testUnicode() {
+    wholeTest("A<-'текст'", ["Literal" : 3..<10])
+    multiTest("A<-'текст'", ["Literal" : 3..<10])
+  }
+  
   Void testTree() {
     grammarText := 
-      "Number <- ((Real / Int) ' '?)* !. 
+      "Number <- ((Real / Int) ' '?)* EOF 
        Part <- [0-9]+ 
        Int <- Part
-       Real <- Part '.' Part"
+       Real <- Part '.' Part
+       EOF <- !."
     input := "75 33.23 11"
     
     root := Parser.tree(grammarText, input.toBuf)
@@ -76,7 +82,7 @@ class ParserTest : Test
   }
   
   private Void multiTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar()) {
-    whole := in.toBuf
+    whole := in.toBuf  
     first := whole[0..2]
     second := whole[0..5]
     p := Parser(grammar, ListHandler())

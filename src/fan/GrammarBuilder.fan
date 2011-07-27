@@ -222,5 +222,5 @@ internal class GrammarBuilder
     return E.any
   }
   
-  private Expression nt() { E.nt(text[pop("Identifier").range].trim) }  
+  private Expression nt() { E.nt(text[pop("Identifier").range].trim) }
 }

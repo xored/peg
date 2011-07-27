@@ -3,10 +3,11 @@ class PegExample
 {
   static Void main(Str[] args) {
     grammarText := 
-      "Number <- ((Real / Int) ' '?)* !. 
+      "Number <- ((Real / Int) ' '?)* EOF 
        Part <- [0-9]+ 
        Int <- Part
-       Real <- Part '.' Part"
+       Real <- Part '.' Part
+       EOF <- !."
     input := "75 33.23 11"
     
     root := Parser.tree(grammarText, input.toBuf)
