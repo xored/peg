@@ -4,16 +4,12 @@
 ** (http://pdos.csail.mit.edu/~baford/packrat/popl04/).
 ** Non-terminals symbols are the same as in the paper.
 ** However, the grammar is modified slightly to make parsing easier.
-
-// Actually, meta grammar should be a singleton. 
-// But Fantom has troubles with static variables initialization order 
-// (at least in JS, http://fantom.org/sidewalk/topic/1381). And some expressions are singletons.
-// So, to avoid hard bugs, let the meta grammar be a normal class.
-// Performance overhead is not important.
 @Js
 internal const class MetaGrammar : GrammarImpl
 {
-  new make() : super("Grammar", createMetaRules) {}
+  static const MetaGrammar val := MetaGrammar()
+  
+  private new make() : super("Grammar", createMetaRules) {}
 
   ** Create a map of meta grammar rules.
   private static Str:Expression createMetaRules() {

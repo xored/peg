@@ -66,7 +66,7 @@ class GrammarBuilderTest : Test
   
   private Void verifyGrammar(Str in, Grammar grammar) {
     lh := ListHandler()
-    p := Parser(MetaGrammar(), lh)
+    p := Parser(MetaGrammar.val, lh)
     p.run(in.toBuf)
     verifyEq(MatchState.success, p.match.state)
     verifyEq(GrammarBuilder.run(in, lh.blocks), grammar)

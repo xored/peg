@@ -27,7 +27,7 @@ class PegExample
   
   private static Void parseGrammar(Str in) {
     lh := ListHandler()
-    p := Parser(MetaGrammar(), lh)
+    p := Parser(MetaGrammar.val, lh)
     p.run(in.toBuf, true)
     if (MatchState.success == p.match.state) {
       grammar := GrammarBuilder.run(in, lh.blocks)
@@ -42,7 +42,7 @@ class PegExample
   
   private static Void parse(Str in) {
     lh := ListHandler()
-    p := Parser(MetaGrammar(), lh)
+    p := Parser(MetaGrammar.val, lh)
     p.run(in.toBuf, true)
     echo("Result is $p.match")
     echo("Blocks: " + skipUnused(lh.blocks))

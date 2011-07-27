@@ -4,8 +4,8 @@ class ExpressionTest : Test
   
   Void testE() {
     // straightforward 
-    verifyEq(E.empty, Empty.val)
-    verifyEq(E.any, Any.val)
+    verifyEq(E.empty, Empty())
+    verifyEq(E.any, Any())
     verifyEq(E.t("a"), T("a"))
     verifyEq(E.nt("a"), Nt("a"))    
     verifyEq(E.seq([E.empty, E.any]), Seq([E.empty, E.any]))

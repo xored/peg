@@ -76,13 +76,13 @@ class ParserTest : Test
     verifyEq(reals, ["33.23"])
   }
   
-  private Void wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar()) {
+  private Void wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {
     p := Parser(grammar, ListHandler()).run(in.toBuf)
     runResultsTest(p, blocks, grammar)
   }
   
-  private Void multiTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar()) {
-    whole := in.toBuf  
+  private Void multiTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {
+    whole := in.toBuf
     first := whole[0..2]
     second := whole[0..5]
     p := Parser(grammar, ListHandler())
@@ -92,7 +92,7 @@ class ParserTest : Test
     runResultsTest(p, blocks, grammar)
   }
   
-  private Void runResultsTest(Parser p, Str:Range blocks := [:], Grammar grammar := MetaGrammar()) {
+  private Void runResultsTest(Parser p, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {
     verifyEq(p.match.state, MatchState.success)
     lh := p.handler as ListHandler
     verifyEq(lh.blocks.last.name, grammar.start)

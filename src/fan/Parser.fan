@@ -68,12 +68,13 @@ class Parser
     if (MatchState.success != p.match.state) {
       throw ParseErr("Failed to parse input: $p.match")
     }
-    return BlockNodeImpl.fromList(lh.blocks)
+    ret := BlockNodeImpl.fromList(lh.blocks)
+    return ret
   }
   
   private static Grammar parseGrammar(Str grammar) {
     lh := ListHandler()
-    p := Parser(MetaGrammar(), lh).run(grammar.toBuf)
+    p := Parser(MetaGrammar.val, lh).run(grammar.toBuf)
     if (MatchState.success != p.match.state) {
       throw ParseErr("Failed to parse grammar: $p.match")
     }

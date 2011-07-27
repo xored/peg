@@ -27,21 +27,23 @@ const class Expression
 }
 
 ** Empty expression. Has no kids.
+// This should be a singleton. 
+// But Fantom has troubles with static variables initialization order 
+// (at least in JS, http://fantom.org/sidewalk/topic/1381).
 @Js
 const class Empty : Expression {
-  static const Empty val := Empty()
-  
-  private new make() : super() {}
+  new make() : super() {}
   
   override Str toStr() { "empty" }
 }
 
 ** Any char (.). Has no kids.
+// This should be a singleton. 
+// But Fantom has troubles with static variables initialization order 
+// (at least in JS, http://fantom.org/sidewalk/topic/1381).
 @Js
 const class Any : Expression {
-  static const Any val := Any()
-  
-  private new make() : super() {}
+  new make() : super() {}
   
   override Str toStr() { "." }
 }
@@ -197,10 +199,10 @@ const class E {
   private new make() {}
   
   ** Empty expression (matches empty input, never fails).
-  static Expression empty() { Empty.val }
+  static Expression empty() { Empty() }
   
   ** Any char expression (matches any char, fails on EOF).
-  static Expression any() { Any.val }
+  static Expression any() { Any() }
   
   ** Terminal expression.
   static Expression t(Str t) { T(t) }
@@ -231,7 +233,7 @@ const class E {
   }
   
   ** Optional expression (e?).
-  static Expression opt(Obj e) { Choice([parse(e), Empty.val]) }
+  static Expression opt(Obj e) { Choice([parse(e), Empty()]) }
   
   ** Zero-or-more repetition (e*).
   static Expression rep(Obj e) { Rep(parse(e)) }
