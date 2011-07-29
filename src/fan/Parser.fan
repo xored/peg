@@ -95,20 +95,21 @@ class Parser
     return ret
   }
   
-  private Str readChars(Int size) {
-    ret := buf0.readChars(size)
-    this.pos = Pos(buf0.pos, pos.charPos + ret.size)
-    return ret
+  private Str? readChars(Int size) {
+    try {
+      ret := buf0.readChars(size)      
+      this.pos = Pos(buf0.pos, pos.charPos + ret.size)
+      return ret
+    } catch (IOErr e) {
+      // unexpected eof
+      return null
+    }
   }
   
   private Void seek(Pos pos) {
     buf0.seek(pos.bytePos)
     this.pos = pos    
   }
-  
-  private Int remaining() { buf0.remaining }
-  
-  private Bool more() { buf0.more }
   
   This run(Buf buf, Bool finished := true) {    
     this.buf0 = buf
@@ -215,34 +216,45 @@ class Parser
   private Void t() {
     verify(MatchState.unknown == match.state, "Unexpected state for 'terminal' expression: $match.state")
     e := (T)stack.peek.e
-    s := (Str)e.kids.first
-    if (remaining >= s.toBuf.size) { // need byte size here, not char size
-      oldPos := pos
-      bufS := readChars(s.size)
+    s := (Str)e.kids.first    
+    oldPos := pos
+    bufS := readChars(s.size)    
+    if (null == bufS) {
+      // got EOF
+      seek(oldPos)
+      if (finished) {
+        match.set(false, "Expected string '$s' at pos $pos, but got EOF")
+        pop
+      } else {
+        match.lack("terminal $e at $pos position")
+      }
+    } else {
+      // read something
       if (bufS != s) {
         seek(oldPos)
       }
       match.set(bufS == s, "Expected string '$s' at pos $pos, but got '$bufS'")
       pop
-    } else if (finished) {
-      match.set(false, "Expected string '$s' at pos $pos, but got EOF")
-      pop
-    } else {
-      match.lack("terminal $e at $pos position")
-    }
+    }    
   }
   
   ** handles class
   private Void clazz() {
     verify(MatchState.unknown == match.state, "Unexpected state for 'class' expression: $match.state")
     r := stack.peek
-    if (more) {
-      // A char may consist of several bytes.
-      // So, if 'more' is 'true', this doesn't guarantee, that buf has one char to read.
-      // But we don't handle such situations.
-      
-      oldPos := pos
-      c := readChar
+    oldPos := pos
+    c := readChar
+    if (null == c) {
+      // got EOF
+      seek(oldPos)
+      if (finished) {
+        match.set(false, "Expected char from class '$r.e' at pos $pos, but got EOF")
+        pop
+      } else {
+        match.lack("class $r.e at $pos position")
+      }
+    } else {
+      // read something
       rl := r.e.kids as Range[]
       ok := false
       for (i := 0; !ok && i < rl.size; ++i) {
@@ -253,11 +265,6 @@ class Parser
       }
       match.set(ok, "Expected char from class '$r.e' at pos $pos, but got '$c.toChar'")
       pop
-    } else if (finished) {
-      match.set(false, "Expected char from class '$r.e' at pos $pos, but got EOF")
-      pop
-    } else {
-      match.lack("class $r.e at $pos position")
     }
   }
   

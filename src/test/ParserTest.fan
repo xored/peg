@@ -50,6 +50,10 @@ class ParserTest : Test
   Void testUnicode() {
     wholeTest("A<-'текст'", ["Literal" : 3..<10])
     multiTest("A<-'текст'", ["Literal" : 3..<10])
+    
+    root := Parser.tree("A <- '(+)' / '№'", "№".toBuf)
+    verifyEq(root.block.name, "A")
+    verifyEq(root.block.range, 0..<1)
   }
   
   Void testTree() {
