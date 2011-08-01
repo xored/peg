@@ -58,11 +58,10 @@ class Parser
   @Transient private Buf? buf0
   @Transient private Bool finished := false
   
-  ** Parses the given input with grammar described by the given grammar text.
+  ** Parses the given input with the given grammar.
   ** Returns the root node of the parsed tree.
   ** If parsing fails, ParseErr is thrown.
-  static BlockNode tree(Str grammar, Buf in) {
-    g := parseGrammar(grammar)
+  static BlockNode tree(Grammar g, Buf in) {
     lh := ListHandler()
     p := Parser(g, lh).run(in)
     if (MatchState.success != p.match.state) {
@@ -70,15 +69,6 @@ class Parser
     }
     ret := BlockNodeImpl.fromList(lh.blocks)
     return ret
-  }
-  
-  private static Grammar parseGrammar(Str grammar) {
-    lh := ListHandler()
-    p := Parser(MetaGrammar.val, lh).run(grammar.toBuf)
-    if (MatchState.success != p.match.state) {
-      throw ParseErr("Failed to parse grammar: $p.match")
-    }
-    return GrammarBuilder.run(grammar, lh.blocks)
   }
   
   new make(Grammar grammar, Handler handler) {

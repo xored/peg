@@ -15,7 +15,17 @@ const mixin Grammar
   ** In the original PEG paper, starting expression may be by its own, without non-terminal.
   ** But this is inconvenient to work with. 
   abstract Str start()
-  
+
+  ** Parses a grammar text and returns the parsed grammar. 
+  ** May throw ParseErr.
+  static Grammar fromStr(Str grammar) {
+    lh := ListHandler()
+    p := Parser(MetaGrammar.val, lh).run(grammar.toBuf)
+    if (MatchState.success != p.match.state) {
+      throw ParseErr("Failed to parse grammar: $p.match")
+    }
+    return GrammarBuilder.run(grammar, lh.blocks)
+  }
 }
 
 @Js

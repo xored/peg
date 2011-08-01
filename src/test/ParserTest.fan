@@ -51,7 +51,7 @@ class ParserTest : Test
     wholeTest("A<-'текст'", ["Literal" : 3..<10])
     multiTest("A<-'текст'", ["Literal" : 3..<10])
     
-    root := Parser.tree("A <- '(+)' / '№'", "№".toBuf)
+    root := Parser.tree(Grammar.fromStr("A <- '(+)' / '№'"), "№".toBuf)
     verifyEq(root.block.name, "A")
     verifyEq(root.block.range, 0..<1)
   }
@@ -65,7 +65,7 @@ class ParserTest : Test
        EOF <- !."
     input := "75 33.23 11"
     
-    root := Parser.tree(grammarText, input.toBuf)
+    root := Parser.tree(Grammar.fromStr(grammarText), input.toBuf)
     ints := Str[,]
     reals := Str[,]
     traverse(root) |Block b| {

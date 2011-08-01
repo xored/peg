@@ -48,7 +48,7 @@ internal const class MetaGrammar : GrammarImpl
       "LEFTARROW" : E.t("<-"),
       
       "Char" : E.choice([
-        ["\\", E.choice(["n", "r", "t", "'", "\"", "[", "]", "\\"])],
+        ["\\", E.clazz(['n', 'r', 't', '\'', '"', '[', ']', '\\'])],
         [E.not("\\"), E.any]
       ]), // TODO: implement character code support such as \213 here
       

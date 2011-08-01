@@ -10,6 +10,20 @@ const mixin Block
   abstract Range range()
 }
 
+** A node in tree of blocks.
+@Js
+const mixin BlockNode
+{
+  ** This block 
+  abstract Block block()
+  
+  ** Parent node (null for root)
+  abstract BlockNode? parent()
+  
+  ** Kids
+  abstract BlockNode[] kids()
+}
+
 ** Generic implementation of block interface.
 @Js
 internal const class BlockImpl : Block
@@ -26,20 +40,6 @@ internal const class BlockImpl : Block
   }
   
   override Str toStr() { "BlockImpl($name, $range)" }
-}
-
-** A node in tree of blocks.
-@Js
-const mixin BlockNode
-{
-  ** This block 
-  abstract Block block()
-  
-  ** Parent node (null for root)
-  abstract BlockNode? parent()
-  
-  ** Kids
-  abstract BlockNode[] kids()
 }
 
 ** Generic implementation of BlockNode. 

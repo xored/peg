@@ -10,7 +10,7 @@ class PegExample
        EOF <- !."
     input := "75 33.23 11"
     
-    root := Parser.tree(grammarText, input.toBuf)
+    root := Parser.tree(Grammar.fromStr(grammarText), input.toBuf)
     traverse(root, input, 0)
   }
   
