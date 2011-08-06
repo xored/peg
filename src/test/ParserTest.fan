@@ -23,25 +23,25 @@ class ParserTest : Test
                A <- !.")
   }
   
-  Void testOverflow() {
-    overflowTest("", "A <- (!.)*")
-    overflowTest("", "A <- (!.)*")
-    overflowTest("aaa", "A <- (!'b')*")
+  Void testInfiniteLoop() {
+    infiniteLoopTest("", "A <- (!.)*")
+    infiniteLoopTest("", "A <- (!.)*")
+    infiniteLoopTest("aaa", "A <- (!'b')*")
     
     b := "A <- (B*)*
           B <- 'b'"
-    overflowTest("", b)
-    overflowTest("bbb", b)
+    infiniteLoopTest("", b)
+    infiniteLoopTest("bbb", b)
     
     numbers := "Numbers <- Number*
                 Number <- [0-9]+ / Spacing
                 Spacing <- ' ' / '\t' / '\n' / EOF
                 EOF <- !."     
-    overflowTest("", numbers)
-    overflowTest("0 20 3", numbers)
+    infiniteLoopTest("", numbers)
+    infiniteLoopTest("0 20 3", numbers)
   }
   
-  private Void overflowTest(Str in, Str grammar) {
+  private Void infiniteLoopTest(Str in, Str grammar) {
     p := Parser(Grammar.fromStr(grammar), ListHandler()).run(in.toBuf)
     verifyEq(p.match.state, MatchState.fail)
     verify(p.match.info.startsWith("Inifnite loop"))
