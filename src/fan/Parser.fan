@@ -11,6 +11,22 @@ internal const class Pos {
   }
   
   override Str toStr() { "(byte=$bytePos, char=$charPos)" }
+  
+  override Int hash() {
+    prime := 31
+    r := 1
+    r = prime * r + bytePos
+    r = prime * r + charPos
+    return r
+  }
+  
+  override Bool equals(Obj? other) {
+    if (typeof != other?.typeof) {
+      return false
+    }
+    o := other as Pos
+    return bytePos == o.bytePos && charPos == o.charPos
+  }
 }
 
 @Js
@@ -360,15 +376,24 @@ class Parser
   
   ** Handles repetition expression
   private Void rep() {
+    r := stack.peek
     switch (match.state) {
     case MatchState.unknown:
       // we're here first time
       ++optional
-      push(stack.peek.e.kids.first)
+      r.startPos = pos
+      push(r.e.kids.first)
       
     case MatchState.success:
-      // sub-expression succeeded, push it again
-      push(stack.peek.e.kids.first)
+      if (pos == r.startPos) {
+        // sub-expression succeeded, but consumed no input => infinite loop
+        match.set(false, "Inifnite loop at buf position $pos, expression: $r.e")
+        pop
+      } else {
+        // remember the pos and push sub-expression again
+        r.startPos = pos
+        push(r.e.kids.first)
+      }
       
     case MatchState.fail:
       // sub-expression failed, but it's OK

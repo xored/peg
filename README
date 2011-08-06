@@ -4,3 +4,5 @@ The main resources about PEG:
   * http://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf
   * http://en.wikipedia.org/wiki/Parsing_expression_grammar
 
+API is a subject to change until 1.0 is released.
+
