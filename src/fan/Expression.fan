@@ -191,7 +191,7 @@ const class Not : Expression {
 **    2.1. ...and it starts with # and it's not just "#", 'nt(e without #)' is returned
 **    2.2. 't(e)' is returned otherwise (so, terminals which start with #, must be specified explicitly)
 ** 3. If 'e' is a list, 'seq(e)' is returned
-** 4. If 'e' is a range, 'range(e)' is returned
+** 4. If 'e' is a range, 'clazz(e)' is returned
 ** 5. Exception is thrown otherwise
 @Js
 const class E {

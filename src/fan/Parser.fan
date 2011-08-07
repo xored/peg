@@ -117,17 +117,18 @@ class Parser
     this.pos = pos    
   }
   
-  This run(Buf buf, Bool finished := true) {    
+  This run(Buf buf, Bool finished := true) {
+    if (stack.isEmpty) {
+      // nothing to be done, must not change anything
+      return this
+    }    
     this.buf0 = buf
-    this.finished = finished
-    
+    this.finished = finished    
     // restore working state
     match.reset
-    seek(pos)
-    
+    seek(pos)    
     while (!stack.isEmpty) {
       step
-
       if (MatchState.lack == match.state) {
         if (this.finished) {
           if (0 == optional) {
@@ -141,8 +142,7 @@ class Parser
           break
         }
       } // lack state
-    } // while loop
-    
+    } // while loop    
     return this
   }
   

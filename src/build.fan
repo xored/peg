@@ -7,7 +7,7 @@ class Build : build::BuildPod
     podName = "peg"
     version = Version.fromStr("0.8")
     summary = ""
-    srcDirs = [`test/`, `fan/`, `fan/examples/`]
+    srcDirs = [`test/`, `fan/`]
     depends = ["sys 1.0"]
   }
 }

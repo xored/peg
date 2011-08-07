@@ -66,9 +66,71 @@ class ParserTest : Test
     multiTest("# Comment
                
                A <- !.")
+  }
+  
+  Void testLack() {
+    // lack+finished state in t
+    lackTest("A <- 'aaaa'", ["aa", "aa"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<4, lh.blocks.first?.range)
+    }
+    lackTest("A <- 'aaaa'", ["aa", "a"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.fail, p.match.state)
+    }
     
-    // TODO: need tests for special cases (when "lack" + "finished" state are
-    // handled specially in Parser, e.g. t(), choice(), rep(), etc)
+    // lack+finished state in clazz
+    lackTest("A <- [a-z]", ["", "a"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<1, lh.blocks.first?.range)
+    }
+    lackTest("A <- [a-z]", ["", ""]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.fail, p.match.state)
+    }
+    
+    // lack+finished state in choice
+    lackTest("A <- 'aaa' / 'aab'", ["aa", "b"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<3, lh.blocks.first?.range)
+    }
+    lackTest("A <- 'abb' / 'abd'", ["ab", "c"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.fail, p.match.state)
+    }
+    lackTest("A <- 'b' / 'aaa' / 'aab'", ["a", "a", "b"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<3, lh.blocks.first?.range)
+    }
+    
+    // lack+finished state in rep
+    lackTest("A <- 'a'*", ["aa", "a"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<3, lh.blocks.first?.range)
+    }
+    lackTest("A <- 'a'*", ["aa", "b"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<2, lh.blocks.first?.range)
+    }
+    lackTest("A <- 'a'*", ["b", "a"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<0, lh.blocks.first?.range)
+    }
+    lackTest("A <- 'aaa'*", ["a", "a"]) |Parser p, ListHandler lh| { 
+      verifyEq(MatchState.success, p.match.state)
+      verifyEq(0..<0, lh.blocks.first?.range)
+    }
+  }
+  
+  private Void lackTest(Str grammar, Str[] in, |Parser p, ListHandler lh| f) {
+    g := Grammar.fromStr(grammar)
+    t := in.join
+    cur := 0
+    lh := ListHandler()
+    p := Parser(g, lh)
+    in.each |s, i| { 
+      buf := t.toBuf[0..<cur + s.size]
+      cur += s.size
+      p.run(buf, in.size-1 == i)
+    }
+    f(p, lh)
   }
   
   Void testUnicode() {
