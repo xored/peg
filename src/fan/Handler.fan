@@ -21,16 +21,15 @@ mixin Handler {
   abstract Void apply()
 }
 
-** Simple handler, which stores all blocks in a list
 @Js
 class ListHandler : Handler
 {
-  Block[] blocks := [,] { private set }
+  Block[] blocks := [,] { private set }  
   private Int[] sizes := [0]
   
   override Void push() { sizes.push(blocks.size) }
   
-  override Void rollback() { blocks.size = sizes.pop }
+  override Void rollback() { blocks.removeRange(sizes.pop..<blocks.size) }
   
   override Void apply() { sizes.pop }
   

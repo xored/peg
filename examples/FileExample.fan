@@ -15,13 +15,14 @@ class FileExample : AbstractMain
   
   override Int run() {
     grammar := Grammar.fromStr(g.readAllStr)
-    input := in.readAllStr.toBuf
+    input := in.mmap
     m := Match()
     echo("Preparation finished")
     start := Duration.now
     n.times {
       input.seek(0)
-      p := Parser(grammar, ListHandler()).run(input)
+      lh := ListHandler()
+      p := Parser(grammar, lh).run(input)
       m = p.match
     }
     d := Duration.now - start
