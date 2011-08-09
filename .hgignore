@@ -1,3 +1,5 @@
+tmp/
+bin/
 .buildpath
 .classpath
 .project

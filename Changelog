@@ -1,0 +1,5 @@
+09-Aug-2011:
+	* Several bugfixes, old parser moved to 'old' branch, stateful is a new default parser.
+
+25-July-2011: version 0.8
+	* First working version after redesign. Probably buggy. API is not settled yet. 
