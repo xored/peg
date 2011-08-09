@@ -21,6 +21,7 @@ mixin Handler {
   abstract Void apply()
 }
 
+** Handler, which stores blocks in a list.
 @Js
 class ListHandler : Handler
 {
@@ -36,7 +37,7 @@ class ListHandler : Handler
   override Void visit(Block block) { blocks.add(block) }
 }
 
-** handler which does nothing. May be used to just check, if a text conforms to the grammar.
+** Handler which does nothing. May be used to just check, if a text conforms to the grammar.
 @Js
 class NullHandler : Handler 
 {

@@ -25,7 +25,6 @@ class ParserTest : Test
   
   Void testInfiniteLoop() {
     infiniteLoopTest("", "A <- (!.)*")
-    infiniteLoopTest("", "A <- (!.)*")
     infiniteLoopTest("aaa", "A <- (!'b')*")
     
     b := "A <- (B*)*
