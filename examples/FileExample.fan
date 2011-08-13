@@ -13,6 +13,9 @@ class FileExample : AbstractMain
   @Opt { help="how many times to parse" }
   Int n := 1
   
+  @Opt { help="uses list handler (NullHandler is used otherwise)" }
+  Bool list := false
+  
   override Int run() {
     grammar := Grammar.fromStr(g.readAllStr)
     input := in.mmap
@@ -21,13 +24,14 @@ class FileExample : AbstractMain
     start := Duration.now
     n.times {
       input.seek(0)
-      lh := ListHandler()
-      p := Parser(grammar, lh).run(input)
+      h := list ? ListHandler() : NullHandler()
+      echo("Handler type: $h.typeof")
+      p := Parser(grammar, h).run(input)
       m = p.match
     }
     d := Duration.now - start
-    echo("Match: $m")
-    echo("Duration: $d.toLocale")
+    echo("Match: $m")    
+    echo("Duration: $d.toLocale (${d.toMillis}ms)")
     return 0
   }
 }
