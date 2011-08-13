@@ -8,6 +8,6 @@ class Build : build::BuildPod
     version = Version.fromStr("0.8")
     summary = ""
     srcDirs = [`test/`, `fan/`]
-    depends = ["sys 1.0"]
+    depends = ["sys 1.0", "printf 1.0"]
   }
 }
