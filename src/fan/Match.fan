@@ -37,10 +37,10 @@ class Match {
       return "$state [byte=$bytePos, char=$charPos]"
     } else {
       return "$state: $info [byte=$bytePos, char=$charPos]"
-    }    
+    }
   }
   
-  internal Void reset() { 
+  internal Void reset() {
     state = MatchState.unknown 
     info = ""
     args = null

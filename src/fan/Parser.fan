@@ -257,7 +257,7 @@ class Parser
       if (!ok) {
         seekR(r)
       }
-      mSet(ok, "Expected char from class '%s', but got '%s'", [r.e, c.toChar])
+      mSet(ok, "Expected char from class '%s', but got '%c'", [r.e, c])
       pop
     }
   }
