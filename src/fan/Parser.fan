@@ -1,21 +1,4 @@
 
-@Js
-internal class StackRecord {
-  ** Expression
-  const Expression e
-  
-  ** Current index for container expressions
-  Int index := 0
-  
-  ** Position for expressions, which produce blocks
-  Int charPos := 0
-  Int bytePos := 0
-  
-  new make(Expression e) { this.e = e }
-  
-  override Str toStr() { "{ index=$index, charPos=$charPos, bytePos=$bytePos e=$e }" }
-}
-
 ** Main class, allows to parse inputs using given grammars.
 ** 
 ** Please note, that before version 1.0 every non-static public slots of this class
@@ -40,7 +23,7 @@ class Parser
   
   Handler handler { private set }
   
-  Match match := Match() { private set }
+  Match match := Match.unknown { private set }
   
   // Fields below is not a part of the parser's state.
   @Transient private Buf? buf0
@@ -63,22 +46,6 @@ class Parser
     this.grammar = grammar
     this.handler = handler
     push(E.nt(this.grammar.start))
-  }
-  
-  private Void mSet(Bool ok, Str reason := "", Obj[]? args := null, StackRecord? r := null) {
-    if (null == r) {
-      match.set(ok, bytePos, charPos, reason, args)
-    } else {
-      match.set(ok, r.bytePos, r.charPos, reason, args)
-    }
-  }
-  
-  private Void mLack(Str stopPoint, Obj[]? args := null, StackRecord? r := null) {
-    if (null == r) {
-      match.lack(bytePos, charPos, stopPoint, args)
-    } else {
-      match.lack(r.bytePos, r.charPos, stopPoint, args)
-    }
   }
   
   private Int? readChar() {
@@ -123,7 +90,7 @@ class Parser
     this.buf0 = buf
     this.finished = finished    
     // restore working state
-    match.reset
+    match = Match.unknown
     seek(bytePos, charPos)    
     while (!stack.isEmpty) {
       step
@@ -131,7 +98,7 @@ class Parser
         if (this.finished) {
           if (0 == optional) {
             // finished and not under optional state => parsing error
-            mSet(false, "Unexpected end of input (%s)", [match.info])
+            match = EofMatch(bytePos, charPos, match)
             break
           }
           // finished and under optional state => can do more, continue
@@ -181,7 +148,7 @@ class Parser
   }
   
   private Void push(Expression e) {
-    match.reset
+    match = Match.unknown
     stack.push(StackRecord(e))
   }
   
@@ -196,15 +163,38 @@ class Parser
   
   ** Handles empty expression
   private Void empty() {
-    mSet(true)
+    match = Match.success
+    pop
+  }
+  
+  private Void lack(Expression? e := null) {
+    m := LackMatch(bytePos, charPos, null == e ? stack.peek.e : e)
+    if (finished) {
+      match = EofMatch(bytePos, charPos, m)
+      pop
+    } else {
+      match = m
+    }
+  }
+  
+  private Void success() { 
+    match = Match.success 
+    pop
+  }
+  
+  private Void error(Match m) {
+    match = m
     pop
   }
   
   ** Handles any-char expression
   private Void any() {
     c := readChar
-    mSet(null != c, "Expected any char, but got EOF")
-    pop      
+    if (null == c) {
+      lack
+    } else {
+      success
+    }
   }
   
   ** Handles terminal symbol
@@ -217,19 +207,15 @@ class Parser
     if (null == bufS) {
       // got EOF
       seekR(r)
-      if (finished) {
-        mSet(false, "Expected string '%s', but got EOF", [s])
-        pop
-      } else {
-        mLack("terminal %s", [e])
-      }
+      lack
     } else {
       // read something
-      if (bufS != s) {
+      if (bufS == s) {
+        success
+      } else {
         seekR(r)
+        error(UnexpectedStr(bytePos, charPos, s, bufS))
       }
-      mSet(bufS == s, "Expected string '%s', but got '%s'", [s, bufS])
-      pop
     }    
   }
   
@@ -241,12 +227,7 @@ class Parser
     if (null == c) {
       // got EOF
       seekR(r)
-      if (finished) {
-        mSet(false, "Expected char from class '%s', but got EOF", [r.e])
-        pop
-      } else {
-        mLack("class %s", [r.e])
-      }
+      lack
     } else {
       // read something
       rl := r.e.kids as Range[]
@@ -254,27 +235,27 @@ class Parser
       for (i := 0; !ok && i < rl.size; ++i) {
         ok = rl[i].contains(c)
       }
-      if (!ok) {
+      if (ok) {
+        success
+      } else {
         seekR(r)
+        error(ClassFailed(bytePos, charPos, r.e, c))
       }
-      mSet(ok, "Expected char from class '%s', but got '%c'", [r.e, c])
-      pop
     }
   }
   
   ** Handles non-terminal symbol
   private Void nt() {
     r := stack.peek
-    name := (Str)r.e.kids.first
-    
+    name := (Str)r.e.kids.first    
     switch (match.state) {
       case MatchState.unknown:
         // we're here first time
-        setCurPos(r)
         newE := grammar[name]
         if (null == newE) {
-          mSet(false, "Non-terminal symbol '%s' not found in the grammar", [name])
+          error(NotFound(name))
         } else {
+          setCurPos(r)
           push(newE)
         }
       
@@ -335,8 +316,7 @@ class Parser
         handler.push
         push(r.e.kids[r.index++])
       } else {
-        mSet(false, "All alternatives failed in expression %s", [r.e], r)
-        pop
+        error(NoChoice(bytePos, charPos, (Choice)r.e))
       }
     
     case MatchState.success:
@@ -353,8 +333,7 @@ class Parser
           handler.push
           push(r.e.kids[r.index++])
         } else {
-          mSet(false, "No more input available, and expression %s lacks input", [r.e], r)
-          pop
+          error(NoChoice(bytePos, charPos, (Choice)r.e))
         }
       }
       // else does nothing, the will be more input
@@ -376,8 +355,7 @@ class Parser
     case MatchState.success:
       if (atCurPos(r)) {
         // sub-expression succeeded, but consumed no input => infinite loop
-        mSet(false, "Inifnite loop, expression: %s", [r.e])
-        pop
+        error(InfiniteLoop(bytePos, charPos, r.e))
       } else {
         // remember the pos and push sub-expression again
         setCurPos(r)
@@ -386,14 +364,12 @@ class Parser
       
     case MatchState.fail:
       // sub-expression failed, but it's OK
-      mSet(true)
-      pop
+      success
     
     case MatchState.lack:
       if (finished) {
         // we should do positive match, since there will be no more input
-        mSet(true)
-        pop
+        success
       }
       // else does nothing, the will be more input
     }
@@ -413,8 +389,28 @@ class Parser
       case MatchState.fail:
         // sub-expression either failed or succeded. Finalize and reverse match
         seekR(r)
-        mSet(MatchState.fail == match.state, "Predicate '%s' failed", [r.e], r)
-        pop
+        if (match.isOk) {
+          error(PredicateFailed(bytePos, charPos, r.e))
+        } else {
+          success
+        }
     }
   }
+}
+
+@Js
+internal class StackRecord {
+  ** Expression
+  const Expression e
+  
+  ** Current index for container expressions
+  Int index := 0
+  
+  ** Position for expressions, which produce blocks
+  Int charPos := 0
+  Int bytePos := 0
+  
+  new make(Expression e) { this.e = e }
+  
+  override Str toStr() { "{ index=$index, charPos=$charPos, bytePos=$bytePos e=$e }" }
 }

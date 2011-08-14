@@ -43,7 +43,7 @@ class ParserTest : Test
   private Void infiniteLoopTest(Str in, Str grammar) {
     p := Parser(Grammar.fromStr(grammar), ListHandler()).run(in.toBuf)
     verifyEq(p.match.state, MatchState.fail)
-    verify(p.match.info.startsWith("Inifnite loop"))
+    verify(p.match is InfiniteLoop)
   }
   
   Void testMultiRun() {
