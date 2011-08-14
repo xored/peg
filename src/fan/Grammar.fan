@@ -1,6 +1,5 @@
 
 ** Grammar is a set of expression associated with non-terminal symbols and the starting expression. 
-@Js
 const mixin Grammar
 {
   
@@ -28,7 +27,6 @@ const mixin Grammar
   }
 }
 
-@Js
 const class GrammarImpl : Grammar 
 {  
   private const Str:Expression rules

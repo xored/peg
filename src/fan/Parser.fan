@@ -1,56 +1,9 @@
 
-** Buffer position in chars and bytes.
-@Js
-internal const class Pos {
-  const Int bytePos := 0
-  const Int charPos := 0
-  
-  new make(Int bytePos, Int charPos) {
-    this.bytePos = bytePos
-    this.charPos = charPos
-  }
-  
-  override Str toStr() { "(byte=$bytePos, char=$charPos)" }
-  
-  override Int hash() {
-    prime := 31
-    r := 1
-    r = prime * r + bytePos
-    r = prime * r + charPos
-    return r
-  }
-  
-  override Bool equals(Obj? other) {
-    if (typeof != other?.typeof) {
-      return false
-    }
-    o := other as Pos
-    return bytePos == o.bytePos && charPos == o.charPos
-  }
-}
-
-@Js
-internal class StackRecord {
-  ** Expression
-  const Expression e
-  
-  ** Current index for container expressions
-  Int index := 0
-  
-  ** Starting position for expressions, which produce blocks
-  Pos startPos := Pos(0, 0)
-  
-  new make(Expression e) { this.e = e }
-  
-  override Str toStr() { "{ index=$index, startPos=$startPos, e=$e }" }
-}
-
 ** Main class, allows to parse inputs using given grammars.
 ** 
 ** Please note, that before version 1.0 every non-static public slots of this class
 ** are the subject to change. If you want to ensure your code will be compatible
 ** with later versions, use static part of the API only. 
-@Js
 class Parser
 {
   private Grammar grammar
@@ -64,11 +17,12 @@ class Parser
   private Int optional := 0
   
   ** Current position in the buffer.
-  private Pos pos := Pos(0, 0)
+  private Int charPos := 0
+  private Int bytePos := 0
   
   Handler handler { private set }
   
-  Match match := Match() { private set }
+  Match match := Match.unknown { private set }
   
   // Fields below is not a part of the parser's state.
   @Transient private Buf? buf0
@@ -96,7 +50,8 @@ class Parser
   private Int? readChar() {
     ret := buf0.readChar
     if (null != ret) {
-      this.pos = Pos(buf0.pos, pos.charPos + 1)
+      this.bytePos = buf0.pos
+      this.charPos += 1
     }
     return ret
   }
@@ -104,7 +59,8 @@ class Parser
   private Str? readChars(Int size) {
     try {
       ret := buf0.readChars(size)      
-      this.pos = Pos(buf0.pos, pos.charPos + ret.size)
+      this.bytePos = buf0.pos
+      this.charPos += ret.size
       return ret
     } catch (IOErr e) {
       // unexpected eof
@@ -112,9 +68,17 @@ class Parser
     }
   }
   
-  private Void seek(Pos pos) {
-    buf0.seek(pos.bytePos)
-    this.pos = pos    
+  private Void seek(Int bytePos, Int charPos) {
+    buf0.seek(bytePos)
+    this.charPos = charPos
+    this.bytePos = bytePos
+  }
+  
+  private Void seekR(StackRecord r) { seek(r.bytePos, r.charPos) }
+  
+  private Void setCurPos(StackRecord r) {
+    r.bytePos = bytePos
+    r.charPos = charPos
   }
   
   This run(Buf buf, Bool finished := true) {
@@ -125,15 +89,15 @@ class Parser
     this.buf0 = buf
     this.finished = finished    
     // restore working state
-    match.reset
-    seek(pos)    
+    match = Match.unknown
+    seek(bytePos, charPos)    
     while (!stack.isEmpty) {
       step
       if (MatchState.lack == match.state) {
         if (this.finished) {
           if (0 == optional) {
             // finished and not under optional state => parsing error
-            match.set(false, "Unexpected end of input ($match.info)")
+            match = EofMatch(bytePos, charPos, match)
             break
           }
           // finished and under optional state => can do more, continue
@@ -147,13 +111,6 @@ class Parser
   }
   
   internal Expression[] expressionStack() { stack.map { it.e } }
-  
-  ** Assert
-  private Void verify(Bool ok, Str msg) {
-    if (!ok) {
-      throw Err("$msg\nStack:\n$printStack")
-    }
-  }
   
   private Str printStack() {
     ret := StrBuf()
@@ -190,7 +147,7 @@ class Parser
   }
   
   private Void push(Expression e) {
-    match.reset
+    match = Match.unknown
     stack.push(StackRecord(e))
   }
   
@@ -205,60 +162,71 @@ class Parser
   
   ** Handles empty expression
   private Void empty() {
-    verify(MatchState.unknown == match.state, "Unexpected state for 'empty' expression: $match.state")
-    match.set(true)
+    match = Match.success
+    pop
+  }
+  
+  private Void lack(Expression? e := null) {
+    m := LackMatch(bytePos, charPos, null == e ? stack.peek.e : e)
+    if (finished) {
+      match = EofMatch(bytePos, charPos, m)
+      pop
+    } else {
+      match = m
+    }
+  }
+  
+  private Void success() { 
+    match = Match.success 
+    pop
+  }
+  
+  private Void error(Match m) {
+    match = m
     pop
   }
   
   ** Handles any-char expression
   private Void any() {
-    verify(MatchState.unknown == match.state, "Unexpected state for 'any' expression: $match.state")
     c := readChar
-    match.set(null != c, "Expected any char at $pos position, but got EOF")
-    pop      
+    if (null == c) {
+      lack
+    } else {
+      success
+    }
   }
   
   ** Handles terminal symbol
   private Void t() {
-    verify(MatchState.unknown == match.state, "Unexpected state for 'terminal' expression: $match.state")
-    e := (T)stack.peek.e
-    s := (Str)e.kids.first    
-    oldPos := pos
+    r := stack.peek
+    e := (T)r.e
+    s := (Str)e.kids.first
+    setCurPos(r)
     bufS := readChars(s.size)    
     if (null == bufS) {
       // got EOF
-      seek(oldPos)
-      if (finished) {
-        match.set(false, "Expected string '$s' at pos $pos, but got EOF")
-        pop
-      } else {
-        match.lack("terminal $e at $pos position")
-      }
+      seekR(r)
+      lack
     } else {
       // read something
-      if (bufS != s) {
-        seek(oldPos)
+      if (bufS == s) {
+        success
+      } else {
+        seekR(r)
+        error(UnexpectedStr(bytePos, charPos, s, bufS))
       }
-      match.set(bufS == s, "Expected string '$s' at pos $pos, but got '$bufS'")
-      pop
     }    
   }
   
   ** handles class
   private Void clazz() {
-    verify(MatchState.unknown == match.state, "Unexpected state for 'class' expression: $match.state")
     r := stack.peek
-    oldPos := pos
+    setCurPos(r)
     c := readChar
     if (null == c) {
       // got EOF
-      seek(oldPos)
-      if (finished) {
-        match.set(false, "Expected char from class '$r.e' at pos $pos, but got EOF")
-        pop
-      } else {
-        match.lack("class $r.e at $pos position")
-      }
+      seekR(r)
+      lack
     } else {
       // read something
       rl := r.e.kids as Range[]
@@ -266,27 +234,27 @@ class Parser
       for (i := 0; !ok && i < rl.size; ++i) {
         ok = rl[i].contains(c)
       }
-      if (!ok) {
-        seek(oldPos)
+      if (ok) {
+        success
+      } else {
+        seekR(r)
+        error(ClassFailed(bytePos, charPos, r.e, c))
       }
-      match.set(ok, "Expected char from class '$r.e' at pos $pos, but got '$c.toChar'")
-      pop
     }
   }
   
   ** Handles non-terminal symbol
   private Void nt() {
     r := stack.peek
-    name := (Str)r.e.kids.first
-    
+    name := (Str)r.e.kids.first    
     switch (match.state) {
       case MatchState.unknown:
         // we're here first time
-        r.startPos = pos
         newE := grammar[name]
         if (null == newE) {
-          match.set(false, "Non-terminal symbol '$name' not found in the grammar")      
+          error(NotFound(name))
         } else {
+          setCurPos(r)
           push(newE)
         }
       
@@ -299,7 +267,7 @@ class Parser
         pop
         if (0 == predicate) {
           // visit block, only if we're not under predicate
-          handler.visit(BlockImpl(name, r.startPos.charPos..<pos.charPos))
+          handler.visit(BlockImpl(name, r.charPos..<charPos))
         }
     }    
   }
@@ -310,7 +278,7 @@ class Parser
     switch (match.state) {
     case MatchState.unknown:
       // we're here first time
-      r.startPos = pos
+      setCurPos(r)
       push(r.e.kids[r.index++])
     
     case MatchState.success:                
@@ -323,7 +291,7 @@ class Parser
     
     case MatchState.fail:      
       // sub-expression failed, need to rollback the buf and stop, propagating the match
-      seek(r.startPos)
+      seekR(r)
       pop
     }
   }
@@ -335,20 +303,19 @@ class Parser
     case MatchState.unknown:
       // we're here first time, save pos and push the first alternative
       ++optional
-      r.startPos = pos      
+      setCurPos(r)
       handler.push
       push(r.e.kids[r.index++])
     
     case MatchState.fail:
       // the last alternative failed, rollback and push the next one (if any) or finish
       handler.rollback
-      seek(r.startPos)
+      seekR(r)
       if (r.index < r.e.kids.size) {
         handler.push
         push(r.e.kids[r.index++])
       } else {
-        match.set(false, "All alternatives failed in expression $r.e at buf position $r.startPos")
-        pop
+        error(NoChoice(bytePos, charPos, (Choice)r.e))
       }
     
     case MatchState.success:
@@ -360,19 +327,19 @@ class Parser
       if (finished) {
         // there will be no more input, so continue to push alternatives
         handler.rollback
-        seek(r.startPos)
+        seekR(r)
         if (r.index < r.e.kids.size) {
           handler.push
           push(r.e.kids[r.index++])
         } else {
-          match.set(false, "No more input available, and expression $r.e lacked input " + 
-            "at buf position $r.startPos")
-          pop
+          error(NoChoice(bytePos, charPos, (Choice)r.e))
         }
       }
       // else does nothing, the will be more input
     }
   }
+  
+  private Bool atCurPos(StackRecord r) { bytePos == r.bytePos && charPos == r.charPos }
   
   ** Handles repetition expression
   private Void rep() {
@@ -381,30 +348,27 @@ class Parser
     case MatchState.unknown:
       // we're here first time
       ++optional
-      r.startPos = pos
+      setCurPos(r)
       push(r.e.kids.first)
       
     case MatchState.success:
-      if (pos == r.startPos) {
+      if (atCurPos(r)) {
         // sub-expression succeeded, but consumed no input => infinite loop
-        match.set(false, "Inifnite loop at buf position $pos, expression: $r.e")
-        pop
+        error(InfiniteLoop(bytePos, charPos, r.e))
       } else {
         // remember the pos and push sub-expression again
-        r.startPos = pos
+        setCurPos(r)
         push(r.e.kids.first)
       }
       
     case MatchState.fail:
       // sub-expression failed, but it's OK
-      match.set(true)
-      pop
+      success
     
     case MatchState.lack:
       if (finished) {
         // we should do positive match, since there will be no more input
-        match.set(true)
-        pop
+        success
       }
       // else does nothing, the will be more input
     }
@@ -417,15 +381,34 @@ class Parser
       case MatchState.unknown:
         // we're here first time. Do initialization and push sub-expression
         ++predicate
-        r.startPos = pos
+        setCurPos(r)
         push(stack.peek.e.kids.first)
       
       case MatchState.success:
       case MatchState.fail:
         // sub-expression either failed or succeded. Finalize and reverse match
-        seek(r.startPos)
-        match.set(MatchState.fail == match.state, "Predicate '$r.e' failed at $r.startPos position")
-        pop
+        seekR(r)
+        if (match.isOk) {
+          error(PredicateFailed(bytePos, charPos, r.e))
+        } else {
+          success
+        }
     }
   }
+}
+
+internal class StackRecord {
+  ** Expression
+  const Expression e
+  
+  ** Current index for container expressions
+  Int index := 0
+  
+  ** Position for expressions, which produce blocks
+  Int charPos := 0
+  Int bytePos := 0
+  
+  new make(Expression e) { this.e = e }
+  
+  override Str toStr() { "{ index=$index, charPos=$charPos, bytePos=$bytePos e=$e }" }
 }

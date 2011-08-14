@@ -1,6 +1,5 @@
 
 ** General parsing expression. 
-@Js
 const class Expression
 {
   const Obj[] kids
@@ -30,7 +29,6 @@ const class Expression
 // This should be a singleton. 
 // But Fantom has troubles with static variables initialization order 
 // (at least in JS, http://fantom.org/sidewalk/topic/1381).
-@Js
 const class Empty : Expression {
   new make() : super() {}
   
@@ -41,7 +39,6 @@ const class Empty : Expression {
 // This should be a singleton. 
 // But Fantom has troubles with static variables initialization order 
 // (at least in JS, http://fantom.org/sidewalk/topic/1381).
-@Js
 const class Any : Expression {
   new make() : super() {}
   
@@ -49,7 +46,6 @@ const class Any : Expression {
 }
 
 ** Terminal expression. Has one kid, which is a string represents terminal symbol. 
-@Js
 const class T : Expression {
   new make(Str t) : super([t]) {
     if (t.isEmpty) {
@@ -73,7 +69,6 @@ const class T : Expression {
 ** Class expression. Each kids is a non-empty character range (but can have ranges with 1 element). 
 ** This is syntax sugar for Choice, but we introduce it as a separate expression,
 ** because Choice here would be very slow sometimes. 
-@Js
 const class Class : Expression {
   new make(Range[] ranges) : super(ranges) {
     ranges.each {
@@ -111,7 +106,6 @@ const class Class : Expression {
 }
 
 ** Non-terminal expression. Has one kid which is a string represents non-terminal symbol. 
-@Js
 const class Nt : Expression {
   new make(Str name) : super([name]) {}
   
@@ -121,7 +115,6 @@ const class Nt : Expression {
 }
 
 ** Sequence expression. Kids are sub-expressions.
-@Js
 const class Seq : Expression {
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
@@ -142,7 +135,6 @@ const class Seq : Expression {
 }
 
 ** Choice expression. Kids are expressions choices.
-@Js
 const class Choice : Expression {  
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
@@ -165,7 +157,6 @@ const class Choice : Expression {
 }
 
 ** Repetition (e*) expression. Has one kid, which is an expression to repeat.
-@Js
 const class Rep : Expression {
   new make(Expression e) : super([e]) {}
   
@@ -173,7 +164,6 @@ const class Rep : Expression {
 }
 
 ** Not-predicate expression. Has one kid which is an expression to check.
-@Js
 const class Not : Expression {
   new make(Expression e) : super([e]) {}
   
@@ -193,7 +183,6 @@ const class Not : Expression {
 ** 3. If 'e' is a list, 'seq(e)' is returned
 ** 4. If 'e' is a range, 'clazz(e)' is returned
 ** 5. Exception is thrown otherwise
-@Js
 const class E {
   
   private new make() {}

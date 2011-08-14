@@ -1,3 +1,6 @@
+14-Aug-2011: v0.8.1
+	* Major performance loss fix
+
 09-Aug-2011:
 	* Several bugfixes, old parser moved to 'old' branch, stateful is a new default parser.
 

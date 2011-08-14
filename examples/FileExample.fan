@@ -19,7 +19,7 @@ class FileExample : AbstractMain
   override Int run() {
     grammar := Grammar.fromStr(g.readAllStr)
     input := in.mmap
-    m := Match()
+    m := Match.unknown
     echo("Preparation finished")
     start := Duration.now
     n.times {
