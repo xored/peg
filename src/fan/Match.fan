@@ -1,5 +1,4 @@
 
-@Js
 enum class MatchState {
   unknown,  
   ** Matched successfully
@@ -10,7 +9,6 @@ enum class MatchState {
   lack;
 }
 
-@Js
 const class Match {
   static const Match unknown := Match(MatchState.unknown, 0, 0)
   static const Match success := Match(MatchState.success, 0, 0)
@@ -40,20 +38,17 @@ const class Match {
   }
 }
 
-@Js
 const class EofMatch : Match {
   new make(Int bytePos, Int charPos, Match? cause := null) : super(MatchState.fail, bytePos, charPos, cause) {}
   override protected Str explanation() { "unexpected end of input" }
 }
 
-@Js
 const class LackMatch : Match {
   private const Expression e
   new make(Int bytePos, Int charPos, Expression e) : super(MatchState.lack, bytePos, charPos) { this.e = e }
   override protected Str explanation() { "lack input for $e" }
 }
 
-@Js
 const class UnexpectedStr : Match {
   private const Str expected
   private const Str got
@@ -64,7 +59,6 @@ const class UnexpectedStr : Match {
   override protected Str explanation() { "expected $expected, but got $got" }
 }
 
-@Js
 const class ClassFailed : Match {
   private const Class clazz
   private const Int got
@@ -75,28 +69,24 @@ const class ClassFailed : Match {
   override protected Str explanation() { "expected $clazz, but got $got" }
 }
 
-@Js
 const class NotFound : Match {
   private const Str symbol
   new make(Str symbol) : super(MatchState.fail, 0, 0) { this.symbol = symbol }
   override protected Str explanation() { "Non-terminal symbol '$symbol' not found in the grammar" }
 }
   
-@Js
 const class NoChoice : Match {
   private const Choice e
   new make(Int bytePos, Int charPos, Choice e) : super(MatchState.fail, bytePos, charPos) { this.e = e }
   override protected Str explanation() { "All alternatives failed in expression $e" }
 }
   
-@Js
 const class InfiniteLoop : Match {
   private const Rep e
   new make(Int bytePos, Int charPos, Rep e) : super(MatchState.fail, bytePos, charPos) { this.e = e }
   override protected Str explanation() { "Inifnite loop, expression: $e" }
 }
 
-@Js
 const class PredicateFailed : Match {
   private const Not e
   new make(Int bytePos, Int charPos, Not e) : super(MatchState.fail, bytePos, charPos) { this.e = e }

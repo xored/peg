@@ -4,7 +4,6 @@
 ** Please note, that before version 1.0 every non-static public slots of this class
 ** are the subject to change. If you want to ensure your code will be compatible
 ** with later versions, use static part of the API only. 
-@Js
 class Parser
 {
   private Grammar grammar
@@ -398,7 +397,6 @@ class Parser
   }
 }
 
-@Js
 internal class StackRecord {
   ** Expression
   const Expression e

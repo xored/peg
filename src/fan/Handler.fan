@@ -1,7 +1,6 @@
 
 ** Handler represents a stack of visits of blocks with abilities
 ** to rollback to the prevoiusly pushed state.
-@Js
 mixin Handler {
   
   abstract Void visit(Block block)
@@ -22,7 +21,6 @@ mixin Handler {
 }
 
 ** Handler, which stores blocks in a list.
-@Js
 class ListHandler : Handler
 {
   Block[] blocks := [,] { private set }  
@@ -38,7 +36,6 @@ class ListHandler : Handler
 }
 
 ** Handler which does nothing. May be used to just check, if a text conforms to the grammar.
-@Js
 class NullHandler : Handler 
 {
   override Void push() {}
