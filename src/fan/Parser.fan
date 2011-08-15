@@ -8,7 +8,7 @@ class Parser
 {
   private Grammar grammar
   
-  private StackRecord[] stack := [,]
+  private StackRecord[] stack := StackRecord[,] { capacity = 100 }
   
   ** If this >0, we parse under a predicate.  
   private Int predicate := 0
@@ -110,8 +110,6 @@ class Parser
     return this
   }
   
-  internal Expression[] expressionStack() { stack.map { it.e } }
-  
   private Str printStack() {
     ret := StrBuf()
     stack.eachr { 
@@ -160,12 +158,6 @@ class Parser
     }
   }
   
-  ** Handles empty expression
-  private Void empty() {
-    match = Match.success
-    pop
-  }
-  
   private Void lack(Expression? e := null) {
     m := LackMatch(bytePos, charPos, null == e ? stack.peek.e : e)
     if (finished) {
@@ -183,6 +175,12 @@ class Parser
   
   private Void error(Match m) {
     match = m
+    pop
+  }
+  
+  ** Handles empty expression
+  private Void empty() {
+    match = Match.success
     pop
   }
   
@@ -218,7 +216,7 @@ class Parser
     }    
   }
   
-  ** handles class
+  ** Handles class
   private Void clazz() {
     r := stack.peek
     setCurPos(r)
