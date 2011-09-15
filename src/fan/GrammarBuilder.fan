@@ -7,10 +7,13 @@ internal class GrammarBuilder
   ** Constructs Grammar from the given blocks and the grammar's text.
   static Grammar run(Str text, Block[] blocks) { GrammarBuilder(text, blocks).grammar }
 
+  static Grammar runPermissive(Str text, Block[] blocks) { GrammarBuilder(text, blocks).grammar(true) }
+  
   private const Str text
   private Block[] blocks
   private Str:Expression rules := [:]
   private Str lastNt := ""
+  private Str[] usedNts := [,]
   
   private new make(Str text, Block[] blocks) {
     this.text = text
@@ -51,9 +54,22 @@ internal class GrammarBuilder
     }
   }
   
-  private Grammar grammar() {
+  private Grammar grammar(Bool permissive := false) {
     pop("Grammar")
-    return eof
+    ret := eof
+    if (!permissive) {
+      // checking that all used NTs are defined
+      undefined := Str[,]
+      usedNts.each { 
+        if (null == rules[it]) {
+          undefined.add(it)
+        }
+      }
+      if (!undefined.isEmpty) {
+        throw ParseErr("Symbols not found: " + undefined.join(", "))
+      }
+    }
+    return ret
   }
   
   private Grammar eof() {
@@ -221,5 +237,11 @@ internal class GrammarBuilder
     return E.any
   }
   
-  private Expression nt() { E.nt(text[pop("Identifier").range].trim) }
+  private Expression nt() { 
+    nt := text[pop("Identifier").range].trim
+    if (null == rules[nt] && !usedNts.contains(nt)) {
+      usedNts.add(nt)
+    }
+    return E.nt(nt)    
+  }
 }
