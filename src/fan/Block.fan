@@ -7,6 +7,19 @@ const mixin Block
   
   ** Range of input which occupied by this block. May be empty.
   abstract Range range()
+  
+  override Bool equals(Obj? other) {
+    o := other as Block
+    return null != o && name == o.name && range == o.range
+  }
+  
+  override Int hash() { 
+    prime := 31
+    r := 1
+    r = r * prime + name.hash
+    r = r * prime + range.hash
+    return r
+  }
 }
 
 ** A node in tree of blocks.

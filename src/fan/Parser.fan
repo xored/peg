@@ -347,25 +347,30 @@ class Parser
       // we're here first time
       ++optional
       setCurPos(r)
+      handler.push
       push(r.e.kids.first)
       
     case MatchState.success:
+      handler.apply
       if (atCurPos(r)) {
         // sub-expression succeeded, but consumed no input => infinite loop
         error(InfiniteLoop(bytePos, charPos, r.e))
       } else {
         // remember the pos and push sub-expression again
         setCurPos(r)
+        handler.push
         push(r.e.kids.first)
       }
       
     case MatchState.fail:
       // sub-expression failed, but it's OK
+      handler.rollback
       success
     
     case MatchState.lack:
       if (finished) {
         // we should do positive match, since there will be no more input
+        handler.rollback
         success
       }
       // else does nothing, the will be more input

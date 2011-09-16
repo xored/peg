@@ -165,6 +165,22 @@ class ParserTest : Test
     verifyEq(reals, ["33.23"])
   }
   
+  Void testRep() {
+    grammarText := 
+      "A <- (B* C D)+ BA
+       B <- 'b'
+       C <- 'c'
+       D <- (![\\n] .)* [\\n]+
+       BA <- 'ba'"
+    input := "c
+              ba"
+    lh := ListHandler()
+    p := Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)
+    // ensure that the last 'b' is not parsed as B
+    verifyEq(lh.blocks, 
+      Block[BlockImpl("C", 0..<1), BlockImpl("D", 1..<2), BlockImpl("BA", 2..<4), BlockImpl("A", 0..<4)])
+  }
+  
   private Void wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {
     p := Parser(grammar, ListHandler()).run(in.toBuf)
     runResultsTest(p, blocks, grammar)
