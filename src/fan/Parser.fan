@@ -158,6 +158,24 @@ class Parser
     }
   }
   
+  private Void handlerPush() {
+    if (0 == predicate) {
+      handler.push
+    }
+  }
+  
+  private Void handlerApply() {
+    if (0 == predicate) {
+      handler.apply
+    }
+  }
+  
+  private Void handlerRollback() {
+    if (0 == predicate) {
+      handler.rollback
+    }
+  }
+  
   private Void lack(Expression? e := null) {
     m := LackMatch(bytePos, charPos, null == e ? stack.peek.e : e)
     if (finished) {
@@ -302,15 +320,15 @@ class Parser
       // we're here first time, save pos and push the first alternative
       ++optional
       setCurPos(r)
-      handler.push
+      handlerPush
       push(r.e.kids[r.index++])
     
     case MatchState.fail:
       // the last alternative failed, rollback and push the next one (if any) or finish
-      handler.rollback
+      handlerRollback
       seekR(r)
       if (r.index < r.e.kids.size) {
-        handler.push
+        handlerPush
         push(r.e.kids[r.index++])
       } else {
         error(NoChoice(bytePos, charPos, (Choice)r.e))
@@ -318,16 +336,16 @@ class Parser
     
     case MatchState.success:
       // the last alternative succeeded, apply and stop, propagating the match
-      handler.apply
+      handlerApply
       pop
     
     case MatchState.lack:
       if (finished) {
         // there will be no more input, so continue to push alternatives
-        handler.rollback
+        handlerRollback
         seekR(r)
         if (r.index < r.e.kids.size) {
-          handler.push
+          handlerPush
           push(r.e.kids[r.index++])
         } else {
           error(NoChoice(bytePos, charPos, (Choice)r.e))
@@ -347,30 +365,30 @@ class Parser
       // we're here first time
       ++optional
       setCurPos(r)
-      handler.push
+      handlerPush
       push(r.e.kids.first)
       
     case MatchState.success:
-      handler.apply
+      handlerApply
       if (atCurPos(r)) {
         // sub-expression succeeded, but consumed no input => infinite loop
         error(InfiniteLoop(bytePos, charPos, r.e))
       } else {
         // remember the pos and push sub-expression again
         setCurPos(r)
-        handler.push
+        handlerPush
         push(r.e.kids.first)
       }
       
     case MatchState.fail:
       // sub-expression failed, but it's OK
-      handler.rollback
+      handlerRollback
       success
     
     case MatchState.lack:
       if (finished) {
         // we should do positive match, since there will be no more input
-        handler.rollback
+        handlerRollback
         success
       }
       // else does nothing, the will be more input
