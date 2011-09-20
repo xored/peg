@@ -42,8 +42,7 @@ class ParserTest : Test
   
   private Void infiniteLoopTest(Str in, Str grammar) {
     p := Parser(Grammar.fromStr(grammar), ListHandler()).run(in.toBuf)
-    verifyEq(p.match.state, MatchState.fail)
-    verify(p.match is InfiniteLoop)
+    verifyType(p.match, InfiniteLoop#)
   }
   
   Void testMultiRun() {
@@ -179,6 +178,29 @@ class ParserTest : Test
     // ensure that the last 'b' is not parsed as B
     verifyEq(lh.blocks, 
       Block[BlockImpl("C", 0..<1), BlockImpl("D", 1..<2), BlockImpl("BA", 2..<4), BlockImpl("A", 0..<4)])
+  }
+  
+  Void testNotFound() {
+    grammarText := 
+      "A <- B / C
+       C <- 'c'"
+    input := "c"
+    
+    lh := ListHandler()
+    p := Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)
+    verifyType(p.match, NotFound#)    
+    
+    grammarText = "A <- B? 'a'"
+    input = "a"
+    p = Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)
+    verifyType(p.match, NotFound#)
+    
+    grammarText = "A <- B? 'aa'"
+    input = "aa"
+    p = Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf[0..<1], false)
+    verifyType(p.match, NotFound#)
+    p.run(input.toBuf[1..<2], true)
+    verifyType(p.match, NotFound#)
   }
   
   private Void wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {

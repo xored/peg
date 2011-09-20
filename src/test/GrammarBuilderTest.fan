@@ -64,23 +64,12 @@ class GrammarBuilderTest : Test
     verifyGrammar("A <- '\\\"'", GrammarImpl("A", ["A": E.t("\"")]))
   }
   
-  Void testNotFound() {
-    grammarText := "A <- B? 'a'"
-    input := "a"
-    try {
-      p := Parser(Grammar.fromStr(grammarText), ListHandler()).run(input.toBuf)
-      verify(false)
-    } catch (ParseErr e) {
-      verify(true)
-    }
-  }
-  
   private Void verifyGrammar(Str in, Grammar grammar) {
     lh := ListHandler()
     p := Parser(MetaGrammar.val, lh)
     p.run(in.toBuf)
     verifyEq(MatchState.success, p.match.state)
-    verifyEq(GrammarBuilder.runPermissive(in, lh.blocks), grammar)
+    verifyEq(GrammarBuilder.run(in, lh.blocks), grammar)
   }
   
 }

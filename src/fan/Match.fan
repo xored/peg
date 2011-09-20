@@ -6,7 +6,9 @@ enum class MatchState {
   ** Match failed: wrong text
   fail,
   ** Match failed: not enough text
-  lack;
+  lack,
+  ** Match failed beyond recovery
+  fatal;
 }
 
 const class Match {
@@ -27,6 +29,8 @@ const class Match {
   
   Bool isOk() { MatchState.success == state }
   
+  Bool isFatal() { MatchState.fatal == state }
+  
   virtual protected Str explanation() { "" }
   
   override Str toStr() { 
@@ -37,6 +41,8 @@ const class Match {
     return s
   }
 }
+
+// Ordinary matches -----------------------------------------------------------
 
 const class EofMatch : Match {
   new make(Int bytePos, Int charPos, Match? cause := null) : super(MatchState.fail, bytePos, charPos, cause) {}
@@ -69,26 +75,29 @@ const class ClassFailed : Match {
   override protected Str explanation() { "expected $clazz, but got $got" }
 }
 
-const class NotFound : Match {
-  const Str symbol
-  new make(Str symbol) : super(MatchState.fail, 0, 0) { this.symbol = symbol }
-  override protected Str explanation() { "Non-terminal symbol '$symbol' not found in the grammar" }
-}
-  
 const class NoChoice : Match {
   const Choice e
   new make(Int bytePos, Int charPos, Choice e) : super(MatchState.fail, bytePos, charPos) { this.e = e }
   override protected Str explanation() { "All alternatives failed in expression $e" }
 }
   
-const class InfiniteLoop : Match {
-  const Rep e
-  new make(Int bytePos, Int charPos, Rep e) : super(MatchState.fail, bytePos, charPos) { this.e = e }
-  override protected Str explanation() { "Inifnite loop, expression: $e" }
-}
-
 const class PredicateFailed : Match {
   const Not e
   new make(Int bytePos, Int charPos, Not e) : super(MatchState.fail, bytePos, charPos) { this.e = e }
   override protected Str explanation() { "Predicate failed: $e" }
 }
+
+// Fatal matches --------------------------------------------------------------
+
+const class NotFound : Match {
+  const Str symbol
+  new make(Str symbol) : super(MatchState.fatal, 0, 0) { this.symbol = symbol }
+  override protected Str explanation() { "Non-terminal symbol '$symbol' not found in the grammar" }
+}
+  
+const class InfiniteLoop : Match {
+  const Rep e
+  new make(Int bytePos, Int charPos, Rep e) : super(MatchState.fatal, bytePos, charPos) { this.e = e }
+  override protected Str explanation() { "Infinite loop, expression: $e" }
+}
+

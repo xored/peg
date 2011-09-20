@@ -82,16 +82,20 @@ class Parser
   }
   
   This run(Buf buf, Bool finished := true) {
+    if (match.isFatal) {
+      // do nothing with a fatal match
+      return this
+    }
     if (stack.isEmpty) {
       // nothing to be done, must not change anything
       return this
-    }    
+    }
     this.buf0 = buf
     this.finished = finished    
     // restore working state
     match = Match.unknown
     seek(bytePos, charPos)    
-    while (!stack.isEmpty) {
+    while (!match.isFatal && !stack.isEmpty) {
       step
       if (MatchState.lack == match.state) {
         if (this.finished) {
