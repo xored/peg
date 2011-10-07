@@ -1,5 +1,6 @@
 
 ** Block is a part of input which is parsed by some rule.
+@Js
 const mixin Block 
 {
   ** The rule which parsed this block (non-terminal). Never empty.
@@ -23,6 +24,7 @@ const mixin Block
 }
 
 ** A node in tree of blocks.
+@Js
 const mixin BlockNode
 {
   ** This block 
@@ -36,6 +38,7 @@ const mixin BlockNode
 }
 
 ** Generic implementation of block interface.
+@Js
 internal const class BlockImpl : Block
 {
   override const Str name
@@ -53,6 +56,7 @@ internal const class BlockImpl : Block
 }
 
 ** Generic implementation of BlockNode. 
+@Js
 internal const class BlockNodeImpl : BlockNode 
 {
   override const Block block

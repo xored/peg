@@ -4,6 +4,7 @@
 ** (http://pdos.csail.mit.edu/~baford/packrat/popl04/).
 ** Non-terminals symbols are the same as in the paper.
 ** However, the grammar is modified slightly to make parsing easier.
+@Js
 internal const class MetaGrammar : GrammarImpl
 {
   static const MetaGrammar val := MetaGrammar()

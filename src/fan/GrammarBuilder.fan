@@ -1,6 +1,7 @@
 
 ** Builds Grammar instance from the given blocks list.
 ** Blocks in the list must be in specific order described by MetaGrammar
+@Js
 internal class GrammarBuilder
 {
   
