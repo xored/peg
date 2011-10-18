@@ -5,7 +5,7 @@ const class Expression
 {
   const Obj[] kids
   
-  protected new make(Obj[] kids := [,]) {
+  internal new make(Obj[] kids := [,]) {
     this.kids = kids
   }
   
@@ -31,7 +31,7 @@ const class Expression
 // But Fantom has troubles with static variables initialization order 
 // (at least in JS, http://fantom.org/sidewalk/topic/1381).
 @Js
-const class Empty : Expression {
+const final class Empty : Expression {
   new make() : super() {}
   
   override Str toStr() { "empty" }
@@ -42,7 +42,7 @@ const class Empty : Expression {
 // But Fantom has troubles with static variables initialization order 
 // (at least in JS, http://fantom.org/sidewalk/topic/1381).
 @Js
-const class Any : Expression {
+const final class Any : Expression {
   new make() : super() {}
   
   override Str toStr() { "." }
@@ -50,7 +50,7 @@ const class Any : Expression {
 
 ** Terminal expression. Has one kid, which is a string represents terminal symbol. 
 @Js
-const class T : Expression {
+const final class T : Expression {
   new make(Str t) : super([t]) {
     if (t.isEmpty) {
       throw ArgErr("Empty terminal symbol")
@@ -74,7 +74,7 @@ const class T : Expression {
 ** This is syntax sugar for Choice, but we introduce it as a separate expression,
 ** because Choice here would be very slow sometimes. 
 @Js
-const class Class : Expression {
+const final class Class : Expression {
   new make(Range[] ranges) : super(ranges) {
     ranges.each {
       if (it.isEmpty) {
@@ -112,7 +112,7 @@ const class Class : Expression {
 
 ** Non-terminal expression. Has one kid which is a string represents non-terminal symbol. 
 @Js
-const class Nt : Expression {
+const final class Nt : Expression {
   new make(Str name) : super([name]) {}
   
   Str symbol() { (Str)kids.first }
@@ -122,7 +122,7 @@ const class Nt : Expression {
 
 ** Sequence expression. Kids are sub-expressions.
 @Js
-const class Seq : Expression {
+const final class Seq : Expression {
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
       throw ArgErr("Need a list with 2 or more elements, but got $list")
@@ -143,7 +143,7 @@ const class Seq : Expression {
 
 ** Choice expression. Kids are expressions choices.
 @Js
-const class Choice : Expression {  
+const final class Choice : Expression {  
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
       throw ArgErr("Need a list with 2 or more elements, but got $list")
@@ -166,7 +166,7 @@ const class Choice : Expression {
 
 ** Repetition (e*) expression. Has one kid, which is an expression to repeat.
 @Js
-const class Rep : Expression {
+const final class Rep : Expression {
   new make(Expression e) : super([e]) {}
   
   override Str toStr() { "${kids.first}*" }
@@ -174,7 +174,7 @@ const class Rep : Expression {
 
 ** Not-predicate expression. Has one kid which is an expression to check.
 @Js
-const class Not : Expression {
+const final class Not : Expression {
   new make(Expression e) : super([e]) {}
   
   override Str toStr() { "!$kids.first" }
