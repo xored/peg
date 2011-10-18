@@ -1,13 +1,18 @@
 
 ** Main class, allows to parse inputs using given grammars.
-** 
-** Please note, that before version 1.0 every non-static public slots of this class
-** are the subject to change. If you want to ensure your code will be compatible
-** with later versions, use static part of the API only. 
+** A separate instance of this class is intended to be used for parsing a single input.
+** It's recommended to use static parsing methods, unless you need stream parsing. 
 @Js
 class Parser
 {
-  private Grammar grammar
+  ** Grammar the parser works with
+  Grammar grammar { private set }
+  
+  ** Handler the parser works with
+  Handler handler { private set }
+  
+  ** Current match state
+  Match match := Match.unknown { private set }
   
   private StackRecord[] stack := StackRecord[,] { capacity = 100 }
   
@@ -21,10 +26,6 @@ class Parser
   private Int charPos := 0
   private Int bytePos := 0
   
-  Handler handler { private set }
-  
-  Match match := Match.unknown { private set }
-  
   // Fields below is not a part of the parser's state.
   @Transient private Buf? buf0
   @Transient private Bool finished := false
@@ -32,20 +33,81 @@ class Parser
   ** Parses the given input with the given grammar.
   ** Returns the root node of the parsed tree.
   ** If parsing fails, ParseErr is thrown.
-  static BlockNode tree(Grammar g, Buf in) {
+  static BlockNode tree(Grammar g, Buf in) { BlockNodeImpl.fromList(list(g, in)) }
+  
+  ** Parses the given input with the given grammar.
+  ** Returns parsed blocks list.
+  ** If parsing fails, ParseErr is thrown.
+  static Block[] list(Grammar g, Buf in) {
     lh := ListHandler()
     p := Parser(g, lh).run(in)
     if (MatchState.success != p.match.state) {
       throw ParseErr("Failed to parse input: $p.match")
     }
-    ret := BlockNodeImpl.fromList(lh.blocks)
-    return ret
+    return lh.blocks
   }
   
+  ** Parses the given input with the given grammar and handler.
+  ** Returns match.
+  static Match parse(Grammar g, Buf in, Handler h) { Parser(g, h).run(in).match }
+
+  ** Creates a parser for the given grammar and handler. 
   new make(Grammar grammar, Handler handler) {
     this.grammar = grammar
     this.handler = handler
-    push(E.nt(this.grammar.start))
+    initStack    
+  }
+  
+  ** Parses the given buffer. Returns this instance of the parser.
+  ** 
+  ** If the current match is fatal, returns immediately.
+  ** 
+  ** If 'finished' is 'false', stream parsing mode is activated. You may call this method several times with 'finished=false',
+  ** but the last time you call it 'finished' should be 'true'. Otherwise, results will be unreliable.
+  ** When you call this method several times with 'finished=false', the 'buf' passed to Nth call
+  ** should contain the 'buf' passed to call N-1. I.e. if you have a string 'abcd' and want to parse it in chunks, 
+  ** you should do the following:
+  ** pre>
+  ** p.run("a".toBuf, false)
+  ** p.run("ab".toBuf, false)
+  ** p.run("abc".toBuf, false)
+  ** p.run("abcd".toBuf, true)
+  ** <pre 
+  This run(Buf buf, Bool finished := true) {
+    if (match.isFatal) {
+      // do nothing with a fatal match
+      return this
+    }
+    if (stack.isEmpty) {
+      // nothing to be done, must not change anything
+      return this
+    }
+    this.buf0 = buf
+    this.finished = finished    
+    // restore working state
+    match = Match.unknown
+    seek(bytePos, charPos)    
+    while (!match.isFatal && !stack.isEmpty) {
+      step
+      if (MatchState.lack == match.state) {
+        if (this.finished) {
+          if (0 == optional) {
+            // finished and not under optional state => parsing error
+            match = EofMatch(bytePos, charPos, match)
+            break
+          }
+          // finished and under optional state => can do more, continue
+        } else {
+          // not finished -- stop this step regardless of optional state
+          break
+        }
+      } // lack state
+    } // while loop    
+    return this
+  }
+  
+  private Void initStack() {
+    push(E.nt(this.grammar.start))    
   }
   
   private Int? readChar() {
@@ -80,39 +142,6 @@ class Parser
   private Void setCurPos(StackRecord r) {
     r.bytePos = bytePos
     r.charPos = charPos
-  }
-  
-  This run(Buf buf, Bool finished := true) {
-    if (match.isFatal) {
-      // do nothing with a fatal match
-      return this
-    }
-    if (stack.isEmpty) {
-      // nothing to be done, must not change anything
-      return this
-    }
-    this.buf0 = buf
-    this.finished = finished    
-    // restore working state
-    match = Match.unknown
-    seek(bytePos, charPos)    
-    while (!match.isFatal && !stack.isEmpty) {
-      step
-      if (MatchState.lack == match.state) {
-        if (this.finished) {
-          if (0 == optional) {
-            // finished and not under optional state => parsing error
-            match = EofMatch(bytePos, charPos, match)
-            break
-          }
-          // finished and under optional state => can do more, continue
-        } else {
-          // not finished -- stop this step regardless of optional state
-          break
-        }
-      } // lack state
-    } // while loop    
-    return this
   }
   
   private Str printStack() {

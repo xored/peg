@@ -1,8 +1,11 @@
 
 ** Builds Grammar instance from the given blocks list.
-** Blocks in the list must be in specific order described by MetaGrammar
+** Blocks in the list must be in specific order described by MetaGrammar.
+** 
+** This class is considered a low-level API and made public for special purposes only. 
+** Please, avoid using it, if possible. It may change in future without backward compatibility.  
 @Js
-internal class GrammarBuilder
+class GrammarBuilder
 {
   
   ** Constructs Grammar from the given blocks and the grammar's text.

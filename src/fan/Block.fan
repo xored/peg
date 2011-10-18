@@ -37,7 +37,7 @@ const mixin BlockNode
   abstract BlockNode[] kids()
 }
 
-** Generic implementation of block interface.
+** General implementation of block interface.
 @Js
 internal const class BlockImpl : Block
 {
@@ -55,7 +55,7 @@ internal const class BlockImpl : Block
   override Str toStr() { "BlockImpl($name, $range)" }
 }
 
-** Generic implementation of BlockNode. 
+** General implementation of BlockNode. 
 @Js
 internal const class BlockNodeImpl : BlockNode 
 {

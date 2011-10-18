@@ -4,8 +4,11 @@
 ** (http://pdos.csail.mit.edu/~baford/packrat/popl04/).
 ** Non-terminals symbols are the same as in the paper.
 ** However, the grammar is modified slightly to make parsing easier.
+** 
+** This grammar is considered a low-level API and made public for special purposes only. 
+** Please, avoid using it, if possible. It may change in future without backward compatibility.  
 @Js
-internal const class MetaGrammar : GrammarImpl
+const class MetaGrammar : GrammarImpl
 {
   static const MetaGrammar val := MetaGrammar()
   

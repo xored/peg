@@ -28,6 +28,7 @@ const mixin Grammar
   }
 }
 
+** General implementation of Grammar.
 @Js
 const class GrammarImpl : Grammar 
 {  
