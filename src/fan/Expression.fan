@@ -1,13 +1,16 @@
 
 ** General parsing expression. 
 @Js
-const class Expression
+const abstract class Expression
 {
   const Obj[] kids
   
-  internal new make(Obj[] kids := [,]) {
+  new make(Obj[] kids := [,]) {
     this.kids = kids
   }
+
+  ** Performs this expression on the given parser state.
+  abstract Void perform(ParserState state)
   
   override Int hash() { kids.hash }
   
@@ -31,10 +34,12 @@ const class Expression
 // But Fantom has troubles with static variables initialization order 
 // (at least in JS, http://fantom.org/sidewalk/topic/1381).
 @Js
-const final class Empty : Expression {
+const class Empty : Expression {
   new make() : super() {}
   
   override Str toStr() { "empty" }
+  
+  override Void perform(ParserState state) { state.success }
 }
 
 ** Any char (.). Has no kids.
@@ -42,15 +47,24 @@ const final class Empty : Expression {
 // But Fantom has troubles with static variables initialization order 
 // (at least in JS, http://fantom.org/sidewalk/topic/1381).
 @Js
-const final class Any : Expression {
+const class Any : Expression {
   new make() : super() {}
   
   override Str toStr() { "." }
+  
+  override Void perform(ParserState state) {
+    c := state.readChar
+    if (null == c) {
+      state.lack
+    } else {
+      state.success
+    }
+  }
 }
 
 ** Terminal expression. Has one kid, which is a string represents terminal symbol. 
 @Js
-const final class T : Expression {
+const class T : Expression {
   new make(Str t) : super([t]) {
     if (t.isEmpty) {
       throw ArgErr("Empty terminal symbol")
@@ -68,13 +82,34 @@ const final class T : Expression {
       .replace("'", "\\'")
       .replace("\"", "\\\"") + "'"      
   }
+  
+  override Void perform(ParserState state) {
+    r := state.peek
+    e := (T)r.e
+    s := (Str)e.kids.first
+    state.setCurPos(r)
+    bufS := state.readChars(s.size)    
+    if (null == bufS) {
+      // got EOF
+      state.seekR(r)
+      state.lack
+    } else {
+      // read something
+      if (bufS == s) {
+        state.success
+      } else {
+        state.seekR(r)
+        state.error(UnexpectedStr(state.bytePos, state.charPos, s, bufS))
+      }
+    }    
+  }
 }
 
 ** Class expression. Each kids is a non-empty character range (but can have ranges with 1 element). 
 ** This is syntax sugar for Choice, but we introduce it as a separate expression,
 ** because Choice here would be very slow sometimes. 
 @Js
-const final class Class : Expression {
+const class Class : Expression {
   new make(Range[] ranges) : super(ranges) {
     ranges.each {
       if (it.isEmpty) {
@@ -108,21 +143,73 @@ const final class Class : Expression {
       .replace("'", "\\'")
       .replace("\"", "\\\"")
   }
+  
+  override Void perform(ParserState state) {
+    r := state.peek
+    state.setCurPos(r)
+    c := state.readChar
+    if (null == c) {
+      // got EOF
+      state.seekR(r)
+      state.lack
+    } else {
+      // read something
+      rl := r.e.kids as Range[]
+      ok := false
+      for (i := 0; !ok && i < rl.size; ++i) {
+        ok = rl[i].contains(c)
+      }
+      if (ok) {
+        state.success
+      } else {
+        state.seekR(r)
+        state.error(ClassFailed(state.bytePos, state.charPos, r.e, c))
+      }
+    }
+  }
 }
 
 ** Non-terminal expression. Has one kid which is a string represents non-terminal symbol. 
 @Js
-const final class Nt : Expression {
+const class Nt : Expression {
   new make(Str name) : super([name]) {}
   
   Str symbol() { (Str)kids.first }
   
   override Str toStr() { "$kids.first" }
+  
+  override Void perform(ParserState state) {
+    r := state.peek
+    name := (Str)r.e.kids.first    
+    switch (state.match.state) {
+      case MatchState.unknown:
+        // we're here first time
+        newE := state.grammar[name]
+        if (null == newE) {
+          state.error(NotFound(name))
+        } else {
+          state.setCurPos(r)
+          state.push(newE)
+        }
+      
+      case MatchState.fail:
+        // sub-expression failed, remove itself and do nothing
+        state.pop
+      
+      case MatchState.success:
+        // sub-expression succeeded
+        state.pop
+        if (0 == state.predicate) {
+          // visit block, only if we're not under predicate
+          state.handler.visit(BlockImpl(name, r.charPos..<state.charPos))
+        }
+    }    
+  }
 }
 
 ** Sequence expression. Kids are sub-expressions.
 @Js
-const final class Seq : Expression {
+const class Seq : Expression {
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
       throw ArgErr("Need a list with 2 or more elements, but got $list")
@@ -139,11 +226,34 @@ const final class Seq : Expression {
     b.add(")")
     return b.toStr
   }
+  
+  override Void perform(ParserState state) {
+    r := state.peek
+    switch (state.match.state) {
+    case MatchState.unknown:
+      // we're here first time
+      state.setCurPos(r)
+      state.push(r.e.kids[r.index++])
+    
+    case MatchState.success:                
+      // sub-expression succeeded, need to push the next one (if any) or finish, propagating the match
+      if (r.index < r.e.kids.size) {
+        state.push(r.e.kids[r.index++])        
+      } else {
+        state.pop
+      }
+    
+    case MatchState.fail:      
+      // sub-expression failed, need to rollback the buf and stop, propagating the match
+      state.seekR(r)
+      state.pop
+    }
+  }
 }
 
 ** Choice expression. Kids are expressions choices.
 @Js
-const final class Choice : Expression {  
+const class Choice : Expression {  
   new make(Expression[] list) : super(list) {
     if (2 > list.size) {
       throw ArgErr("Need a list with 2 or more elements, but got $list")
@@ -162,22 +272,129 @@ const final class Choice : Expression {
     b.add(")")
     return b.toStr
   }
+  
+  override Void perform(ParserState state) {
+    r := state.peek
+    switch (state.match.state) {
+    case MatchState.unknown:
+      // we're here first time, save pos and push the first alternative
+      ++state.optional
+      state.setCurPos(r)
+      state.handlerPush
+      state.push(r.e.kids[r.index++])
+    
+    case MatchState.fail:
+      // the last alternative failed, rollback and push the next one (if any) or finish
+      state.handlerRollback
+      state.seekR(r)
+      if (r.index < r.e.kids.size) {
+        state.handlerPush
+        state.push(r.e.kids[r.index++])
+      } else {
+        state.error(NoChoice(state.bytePos, state.charPos, (Choice)r.e))
+        --state.optional
+      }
+    
+    case MatchState.success:
+      // the last alternative succeeded, apply and stop, propagating the match
+      state.handlerApply
+      state.pop
+      --state.optional
+    
+    case MatchState.lack:
+      if (state.finished) {
+        // there will be no more input, so continue to push alternatives
+        state.handlerRollback
+        state.seekR(r)
+        if (r.index < r.e.kids.size) {
+          state.handlerPush
+          state.push(r.e.kids[r.index++])
+        } else {
+          state.error(NoChoice(state.bytePos, state.charPos, (Choice)r.e))
+          --state.optional
+        }
+      }
+      // else does nothing, the will be more input
+    }
+  }
 }
 
 ** Repetition (e*) expression. Has one kid, which is an expression to repeat.
 @Js
-const final class Rep : Expression {
+const class Rep : Expression {
   new make(Expression e) : super([e]) {}
   
   override Str toStr() { "${kids.first}*" }
+  
+  override Void perform(ParserState state) {
+    r := state.peek
+    switch (state.match.state) {
+    case MatchState.unknown:
+      // we're here first time
+      ++state.optional
+      state.setCurPos(r)
+      state.handlerPush
+      state.push(r.e.kids.first)
+      
+    case MatchState.success:
+      state.handlerApply
+      if (state.atCurPos(r)) {
+        // sub-expression succeeded, but consumed no input => infinite loop
+        state.error(InfiniteLoop(state.bytePos, state.charPos, r.e))
+        --state.optional
+      } else {
+        // remember the pos and push sub-expression again
+        state.setCurPos(r)
+        state.handlerPush
+        state.push(r.e.kids.first)
+      }
+      
+    case MatchState.fail:
+      // sub-expression failed, but it's OK
+      state.handlerRollback
+      state.success
+      --state.optional
+    
+    case MatchState.lack:
+      if (state.finished) {
+        // we should do positive match, since there will be no more input
+        state.handlerRollback
+        state.success
+        --state.optional
+      }
+      // else does nothing, the will be more input
+    }
+  }
 }
 
 ** Not-predicate expression. Has one kid which is an expression to check.
 @Js
-const final class Not : Expression {
+const class Not : Expression {
   new make(Expression e) : super([e]) {}
   
   override Str toStr() { "!$kids.first" }
+  
+  override Void perform(ParserState state) {
+    r := state.peek
+    switch (state.match.state) {
+      case MatchState.unknown:
+        // we're here first time. Do initialization and push sub-expression
+        ++state.predicate
+        state.setCurPos(r)
+        state.push(state.peek.e.kids.first)
+      
+      case MatchState.success:
+      case MatchState.fail:
+        // sub-expression either failed or succeded. Finalize and reverse match
+        state.seekR(r)
+        if (state.match.isOk) {
+          state.error(PredicateFailed(state.bytePos, state.charPos, r.e))
+        } else {
+          state.success
+        }
+        --state.predicate
+    }
+  }
 }
 
 ** Expression factory. 

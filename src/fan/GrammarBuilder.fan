@@ -12,13 +12,15 @@ class GrammarBuilder
   static Grammar run(Str text, Block[] blocks) { GrammarBuilder(text, blocks).grammar }
 
   private const Str text
-  private Block[] blocks
+  private Block[] blocks0
+  private Int curInd
   private Str:Expression rules := [:]
   private Str lastNt := ""
   
   private new make(Str text, Block[] blocks) {
     this.text = text
-    this.blocks = skipUnused(blocks)
+    this.blocks0 = skipUnused(blocks)
+    this.curInd = blocks0.size-1
   }
   
   private static Block[] skipUnused(Block[] blocks) {
@@ -33,27 +35,29 @@ class GrammarBuilder
   }
   
   private Void check(Str name) {
-    b := blocks.peek
+    b := peek
     if (null == b) {
       throw ArgErr("Expected $name block, but run out of blocks")
     }
     if (name != b.name) {
-      throw ArgErr("Expected $name block at ${blocks.size-1} index, but got $b.name")      
+      throw ArgErr("Expected $name block at $curInd index, but got $b.name")
     }
   }
   
   private Block pop(Str name) {
     check(name)
-    return blocks.pop
+    return blocks0[curInd--]
   }
   
   private Block? popIf(Str name) {
-    if (name == blocks.peek.name) {
-      return blocks.pop
+    if (name == blocks0[curInd].name) {
+      return blocks0[curInd--]
     } else {
       return null
     }
   }
+  
+  private Block? peek() { 0 <= curInd ? blocks0[curInd] : null }
   
   private Grammar grammar() {
     pop("Grammar")
@@ -62,7 +66,7 @@ class GrammarBuilder
   
   private Grammar eof() {
     pop("EndOfFile")
-    while (!blocks.isEmpty) {
+    while (0 <= curInd) {
       definition
     }
     if (lastNt.isEmpty) {
@@ -94,7 +98,7 @@ class GrammarBuilder
   private Expression sequence() {
     pop("Sequence")
     elist := Expression[,]
-    while ("Prefix" == blocks.peek.name) {
+    while ("Prefix" == peek.name) {
       elist.add(prefix)
     }
     if (elist.isEmpty) {
@@ -131,7 +135,7 @@ class GrammarBuilder
   
   private Expression primary() {
     pop("Primary")
-    n := blocks.peek.name
+    n := peek.name
     Expression? e := null
     switch(n) {
     case "Identifier":
@@ -152,16 +156,16 @@ class GrammarBuilder
       e = dot
       
     default:
-      throw ArgErr("Expected 'Identifier', 'CLOSE', 'Literal', 'Class' or 'DOT' at ${blocks.size-1} index, but got $n")
+      throw ArgErr("Expected 'Identifier', 'CLOSE', 'Literal', 'Class' or 'DOT' at ${curInd} index, but got $n")
     }
     return e
   }
   
   private Expression literal() {
     b := pop("Literal")
-    bi := blocks.size
+    bi := blocks0.size
     sb := StrBuf()
-    while ("Char" == blocks.peek.name) {
+    while ("Char" == peek.name) {
       sb.insert(0, text[pop("Char").range])
     }
     t := refine(sb.toStr)
@@ -186,11 +190,11 @@ class GrammarBuilder
   private Expression clazz() {
     pop("Class")
     rl := Range[,]
-    while("Range" == blocks.peek.name) {
+    while("Range" == peek.name) {
       rl.add(range)
     }
     if (rl.isEmpty) {
-      throw ArgErr("Got empty Class expression at $blocks.size index")
+      throw ArgErr("Got empty Class expression at $curInd index")
     }
     return E.clazz(rl.reverse)
   }
@@ -202,7 +206,7 @@ class GrammarBuilder
     if (1 != c.size) {
       throw ArgErr("Expected a single character at $bc.range interval in the text, but got ${text[bc.range]}")
     }
-    if ("Char" == blocks.peek.name) {
+    if ("Char" == peek.name) {
       // range of a-z form
       bs := pop("Char")
       s := refine(text[bs.range])
