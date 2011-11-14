@@ -78,7 +78,7 @@ class Parser
     state.match = Match.unknown
     state.seek(state.bytePos, state.charPos)    
     while (!state.match.isFatal && !state.stack.isEmpty) {
-      state.stack.peek.e.perform(state)
+      state.peek.e.perform(state)
       if (MatchState.lack == match.state) {
         if (this.finished) {
           if (0 == state.optional) {

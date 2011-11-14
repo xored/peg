@@ -35,6 +35,9 @@ const mixin BlockNode
   
   ** Kids
   abstract BlockNode[] kids()
+  
+  ** Constructs BlockNode tree from the given block list.
+  static BlockNode fromList(Block[] blocks) { BlockNodeImpl.fromBlocks(blocks) }
 }
 
 ** General implementation of block interface.
@@ -85,7 +88,7 @@ internal const class BlockNodeImpl : BlockNode
   }
 
   ** Constructs BlockNode tree from the given block list.
-  static BlockNode fromList(Block[] blocks) {
+  static BlockNode fromBlocks(Block[] blocks) {
     if (blocks.isEmpty) {
       throw ArgErr("Can't create block tree from empty list")
     }
