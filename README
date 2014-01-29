@@ -4,4 +4,8 @@ The main resources about PEG:
   * http://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf
   * http://en.wikipedia.org/wiki/Parsing_expression_grammar
 
-API is a subject to change until 1.0 is released.
+Licensed under EPL. Special feature of this parser is that it allows to parse really big files, even if the file and/or the parsed tree wouldn't fit into RAM.
+
+Another feature is that it is incremental: you can parse a part of a text, then stop it and parse the rest of the text afterwards. It saves time in situations, when you're getting the text slowly, because it allows to start parsing very earlier instead of waiting for the full text.
+
+Meta grammar is not hard-coded and can be changed using the parser's API (only PEG expressions are hardcoded). This means, that you can modify/extend the grammar relatively easily, without patching the parser itself.
