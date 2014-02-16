@@ -3,8 +3,7 @@ The implementation of PEG parser in fantom (http://fantom.org/).
 The main resources about PEG:
   * http://pdos.csail.mit.edu/~baford/packrat/popl04/peg-popl04.pdf
   * http://en.wikipedia.org/wiki/Parsing_expression_grammar
-
-Also please take a look at the [wiki pages](https://github.com/xored/peg/wiki/_pages).
+  * some tips and examples: https://github.com/xored/peg/wiki/_pages
 
 Licensed under EPL. Special feature of this parser is that it allows to parse really big files, even if the file and/or the parsed tree wouldn't fit into RAM.
 
