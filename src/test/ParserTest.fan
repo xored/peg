@@ -138,6 +138,17 @@ class ParserTest : Test
     root := Parser.tree(Grammar.fromStr("A <- '(+)' / '№'"), "№".toBuf)
     verifyEq(root.block.name, "A")
     verifyEq(root.block.range, 0..<1)
+    
+    grammar := 
+      "Top <- F M+ B !.
+       F <- 'function '
+       M <- (!B !' ' .)+ ' '
+       B <- 'b'"
+    input := "function âmemsetâ /âmemsetâ b"
+    root = Parser.tree(Grammar.fromStr(grammar), input.toBuf)
+    verifyEq(root.kids[2].block.name, "M")
+    verifyEq(root.kids[2].block.range, 18..<28)
+    verifyEq(root.kids[2].block.byteRange, 20..<32)
   }
   
   Void testTree() {
@@ -177,8 +188,10 @@ class ParserTest : Test
     p := Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)
     // ensure that the last 'b' is not parsed as B
     verifyEq(lh.blocks, 
-      Block[BlockImpl("C", 0..<1), BlockImpl("D", 1..<2), BlockImpl("BA", 2..<4), BlockImpl("A", 0..<4)])
+      Block[block("C", 0..<1), block("D", 1..<2), block("BA", 2..<4), block("A", 0..<4)])
   }
+  
+  private static Block block(Str name, Range range, Range byteRange := range) { BlockImpl(name, range, byteRange) }
   
   Void testNotFound() {
     grammarText := 
