@@ -6,8 +6,12 @@ const mixin Block
   ** The rule which parsed this block (non-terminal). Never empty.
   abstract Str name()
   
-  ** Range of input which occupied by this block. May be empty.
+  ** Range of input which occupied by this block (in characters). May be empty.
   abstract Range range()
+  
+  ** Range of input which occupied by this block (in bytes). May be empty. May differ from 'range', if non-latin characters
+  ** are in the input
+  abstract Range byteRange()
   
   override Bool equals(Obj? other) {
     o := other as Block
@@ -46,13 +50,15 @@ internal const class BlockImpl : Block
 {
   override const Str name
   override const Range range
+  override const Range byteRange
   
-  new make(Str name, Range range) {
+  new make(Str name, Range range, Range byteRange) {
     if (name.isEmpty) {
       throw ArgErr("Block's name can't be empty")
     }
     this.name = name
     this.range = range
+    this.byteRange = byteRange
   }
   
   override Str toStr() { "BlockImpl($name, $range)" }

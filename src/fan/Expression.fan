@@ -201,7 +201,7 @@ const class Nt : Expression {
         state.pop
         if (0 == state.predicate) {
           // visit block, only if we're not under predicate
-          state.handler.visit(BlockImpl(name, r.charPos..<state.charPos))
+          state.handler.visit(BlockImpl(name, r.charPos..<state.charPos, r.bytePos..<state.bytePos))
         }
     }    
   }
