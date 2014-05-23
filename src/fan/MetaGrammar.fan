@@ -86,7 +86,9 @@ const class MetaGrammar : GrammarImpl
         "#Spacing"
       ]),
       
-      "Suffix" : E.seq(["#Primary", E.opt([E.choice(["#QUESTION", "#STAR", "#PLUS"]), "#Spacing"])]),
+      "LazyRepetition" : E.seq(["#STAR", "#QUESTION", "#Spacing", "#Prefix"]),
+      
+      "Suffix" : E.seq(["#Primary", E.opt([E.choice(["#LazyRepetition","#QUESTION", "#STAR", "#PLUS"]), "#Spacing"])]),
       
       "Prefix" : E.seq([E.opt([E.choice(["#AND", "#NOT"]), "#Spacing"]), "#Suffix"]),
       

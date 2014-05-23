@@ -127,6 +127,11 @@ class GrammarBuilder
       e = E.rep(primary)
     } else if (null != popIf("PLUS")) {
       e = E.rep1(primary)
+    } else if(null != popIf("LazyRepetition") ) {
+      e2 := prefix
+      pop("QUESTION")
+      pop("STAR")
+      e = E.lazyRep(primary, e2)
     } else {
       e = primary
     }

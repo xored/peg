@@ -191,6 +191,84 @@ class ParserTest : Test
       Block[block("C", 0..<1), block("D", 1..<2), block("BA", 2..<4), block("A", 0..<4)])
   }
   
+  Void testLazyRep() {
+    //the same as testRep(), but checks lazy repetition accuracy
+    grammarText := 
+      "A <- (B* C D)+ BA
+       B <- 'b'
+       C <- 'c'
+       D <- (![\\n] .)* [\\n]+
+       BA <- 'ba'"
+    input := "c
+              ba"
+    
+    grammarText2 := 
+      "A <- (B* C D)+ BA
+       B <- 'b'
+       C <- 'c'
+       D <- .*? [\\n]+
+       BA <- 'ba'"
+    lh := ListHandler()
+    lh2 := ListHandler()
+    p := Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)
+    p2 := Parser(Grammar.fromStr(grammarText2), lh2).run(input.toBuf)
+    verifyEq(lh.blocks, lh2.blocks)
+    
+    //if there is no expression after lazy-rep operator then it throws ParseErr exception 
+    grammarText = "A <- 'a'*?"
+    input = "a"
+    lh = ListHandler()
+    verifyErr(ParseErr#) { Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)}
+    
+    //space between * and ? must throw parse error 
+    grammarText = 
+          "A <- B   * ?   C
+           B <- 'b'
+           C <- 'c'"
+    input = "bbbbc"
+    lh = ListHandler()
+    verifyErr(ParseErr#) { Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)}
+    
+    grammarText = 
+          "A  <- B   *? BC  *? D  *?  DE     
+           B  <- 'b'
+           BC <- 'bc'
+           D  <- 'd'
+           DE  <- 'de'"
+    input = "bbbbcbcdde"
+    lh = ListHandler()
+    p = Parser(Grammar.fromStr(grammarText), lh).run(input.toBuf)
+    verifyEq(lh.blocks, Block[block("B",0..<1),block("B",1..<2), block("B", 2..<3), 
+      block("BC",3..<5), block("BC",5..<7), block("D", 7..<8), block("DE",8..<10), block("A", 0..<10)])
+    
+    //Check tree structure
+    grammarText = 
+          "A   <- P* EOF
+           P   <- 'function' S [a-z]+ '(' ')' '{' B
+           S   <- ' ' / '\t' / '\n'
+           B   <- (C / .)*? '}'
+           C   <- '/*' .*? '*/'          
+           EOF <- !."
+    input = "function aaaa(){ 
+                  /* comment zzzzzz */
+                  print('hello world')    
+                  }function bbbb(){ /**/ /* **** */ }"
+    
+    root := Parser.tree(Grammar.fromStr(grammarText), input.toBuf)
+    //verify 
+    //A -> P -> S
+    //       -> B -> C
+    //  -> P -> S
+    //       -> B -> C
+    //            -> C
+    blockC1 := root.kids[0].kids[1].kids[0].block
+    blockC2 := root.kids[1].kids[1].kids[0].block
+    blockC3 := root.kids[1].kids[1].kids[1].block
+    verifyEq(blockC1.name, "C")
+    verifyEq(blockC2.name, "C")
+    verifyEq(blockC3.name, "C")    
+  }
+  
   private static Block block(Str name, Range range, Range byteRange := range) { BlockImpl(name, range, byteRange) }
   
   Void testNotFound() {

@@ -44,6 +44,10 @@ class GrammarBuilderTest : Test
     // combinations
     verifyGrammar("A <- !B
                    B <- 'b' / 'c'", GrammarImpl("A", ["A": E.not("#B"), "B": E.choice(["b", "c"])]))
+    
+    // lazy repetitions
+    verifyGrammar("A <- a*?b", GrammarImpl("A", ["A": E.seq([E.rep(E.seq([E.not("#b"), "#a"])),"#b"])]))
+    verifyGrammar("A <- 'a'*?'b'", GrammarImpl("A", ["A": E.seq([E.rep(E.seq([E.not("b"), "a"])),"b"])]))
   }
   
   Void testRefine() {

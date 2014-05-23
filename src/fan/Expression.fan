@@ -463,6 +463,10 @@ const class E {
   
   ** And-predicate (&e).
   static Expression and(Obj e) { not(not(e)) }
+  
+  ** Lazy zero-or-more repetition (e*? e2)
+  ** It's translates into (!e2 e)* e2
+  static Expression lazyRep(Obj e, Obj e2) { Seq([rep(seq([not(e2), parse(e)])), parse(e2)])}
 
   private static Expression parse(Obj e) {
     if (e is Expression) {
