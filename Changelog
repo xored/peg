@@ -1,3 +1,9 @@
+26-May-2014: v0.8.3
+	* Lazy repetition extension: "A *? B" expression, which means "(!B A)* B"
+
+10-Mar-2014: v0.8.2
+	* Add byteRange field to Block, which reflects block's range in bytes (which can differ from its range in characters)
+
 14-Aug-2011: v0.8.1
 	* Major performance loss fix
 
