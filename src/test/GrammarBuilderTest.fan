@@ -44,10 +44,17 @@ class GrammarBuilderTest : Test
     // combinations
     verifyGrammar("A <- !B
                    B <- 'b' / 'c'", GrammarImpl("A", ["A": E.not("#B"), "B": E.choice(["b", "c"])]))
-    
+        
     // lazy repetitions
     verifyGrammar("A <- a*?b", GrammarImpl("A", ["A": E.seq([E.rep(E.seq([E.not("#b"), "#a"])),"#b"])]))
     verifyGrammar("A <- 'a'*?'b'", GrammarImpl("A", ["A": E.seq([E.rep(E.seq([E.not("b"), "a"])),"b"])]))
+    
+    
+    // namespaces
+    verifyGrammar("@Z A <- .", GrammarImpl("Z:A", ["Z:A": E.any], "Z", Str[,]))
+    verifyGrammar("@Z A <- . U:B", GrammarImpl("Z:A", ["Z:A": E.seq([E.any, "#U:B"])], "Z", ["U"]))
+    verifyGrammar("A <- .", GrammarImpl("A", ["A": E.any], ""))
+    verifyGrammar("@A A <- a", GrammarImpl("A:A", ["A:A": E.nt("A:a")], "A"))
   }
   
   Void testRefine() {

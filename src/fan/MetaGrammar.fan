@@ -2,8 +2,7 @@
 ** PEG meta-grammar.
 ** This grammar is described in the original PEG paper 
 ** (http://pdos.csail.mit.edu/~baford/packrat/popl04/).
-** Non-terminals symbols are the same as in the paper.
-** However, the grammar is modified slightly to make parsing easier.
+** However, the grammar is modified to support some features like grammar namespaces and lazy repetition operator
 ** 
 ** This grammar is considered a low-level API and made public for special purposes only. 
 ** Please, avoid using it, if possible. It may change in future without backward compatibility.  
@@ -50,6 +49,10 @@ const class MetaGrammar : GrammarImpl
       
       "LEFTARROW" : E.t("<-"),
       
+      "COLON" : E.t(":"),
+      
+      "AT" : E.t("@"),
+      
       "Char" : E.choice([
         ["\\", E.clazz(['n', 'r', 't', '\'', '"', '[', ']', '\\'])],
         [E.not("\\"), E.any]
@@ -71,7 +74,15 @@ const class MetaGrammar : GrammarImpl
       
       "IdentCont" : E.choice(["#IdentStart", '0'..'9']),
       
-      "Identifier" : E.seq(["#IdentStart", E.rep("#IdentCont")]),
+      "Ident" : E.seq(["#IdentStart", E.rep("#IdentCont")]),
+      
+      "Namespace" : E.nt("Ident"),
+      
+      // Identifier which can have explicit namespace
+      "Identifier" : E.seq([E.opt(["#Ident", "#COLON"]), "#Ident"]),
+      
+      // Identifier which can NOT have explicit namespace
+      "DefinitionIdentifier" : E.nt("Ident"),
       
       // Hierarchical syntax ====================================================
     
@@ -96,9 +107,14 @@ const class MetaGrammar : GrammarImpl
       
       "Expression" : E.seq(["#Sequence", E.rep(["#SLASH", "#Spacing", "#Sequence"])]),
       
-      "Definition" : E.seq(["#Identifier", "#Spacing", "#LEFTARROW", "#Spacing", "#Expression"]),
+      "Definition" : E.seq(["#DefinitionIdentifier", "#Spacing", "#LEFTARROW", "#Spacing", "#Expression"]),
       
-      "Grammar" : E.seq(["#Spacing", E.rep1("#Definition"), "#EndOfFile"])
+      "Grammar" : E.seq([
+        "#Spacing", 
+        E.opt(["#AT", "#Spacing", "#Namespace", "#Spacing"]),
+        E.rep1("#Definition"), 
+        "#EndOfFile"
+      ])
     ]
   }
 }

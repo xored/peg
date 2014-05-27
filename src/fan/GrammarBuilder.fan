@@ -16,6 +16,8 @@ class GrammarBuilder
   private Int curInd
   private Str:Expression rules := [:]
   private Str lastNt := ""
+  private Str ns := ""
+  private Str[] deps := [,]
   
   private new make(Str text, Block[] blocks) {
     this.text = text
@@ -25,7 +27,7 @@ class GrammarBuilder
   
   private static Block[] skipUnused(Block[] blocks) {
     ret := Block[,]
-    skip := Str:Str ["EndOfLine":"", "Space":"", "Comment":"", "Spacing":"", "IdentStart":"", "IdentCont":""]
+    skip := Str:Str ["EndOfLine":"", "Space":"", "Comment":"", "Spacing":"", "IdentStart":"", "IdentCont":"", "Ident":"", "AT":"", "COLON":""]
     blocks.each {
       if (null == skip[it.name]) {
         ret.add(it)
@@ -66,24 +68,40 @@ class GrammarBuilder
   
   private Grammar eof() {
     pop("EndOfFile")
-    while (0 <= curInd) {
+    // early check for namespace
+    finishSize := 0
+    if ("Namespace" == blocks0.first.name) {
+      finishSize = 1
+      nsb := blocks0.first
+      ns = text[nsb.range]
+      if (ns.isEmpty) {
+        throw ArgErr("Got empty namespace at 0 block, text interval: $nsb.range")
+      }
+    }
+    // definition loop
+    while (finishSize <= curInd) {
       definition
     }
+    // last checks
     if (lastNt.isEmpty) {
       throw ArgErr("No rules found. Grammar can't be empty.")
     }
-    return GrammarImpl(lastNt, rules)
+    return GrammarImpl(lastNt, rules, ns, deps)
   }
   
   private Void definition() {
     pop("Definition")
     e := expression
     pop("LEFTARROW")
-    lastNt = identifier
+    lastNt = definitionIdentifier
     rules[lastNt] = e
   }
   
-  private Str identifier() { text[pop("Identifier").range].trim }
+  private Str definitionIdentifier() { 
+    ret := text[pop("DefinitionIdentifier").range]
+    // DefinitionIdentifier can't have explicit namespace
+    return ns.isEmpty ? ret : "$ns:$ret"    
+  }
   
   private Expression expression() {
     pop("Expression")
@@ -234,8 +252,19 @@ class GrammarBuilder
     return E.any
   }
   
-  private Expression nt() { 
-    nt := text[pop("Identifier").range].trim
-    return E.nt(nt)    
+  private Expression nt() {
+    symbol := text[pop("Identifier").range]
+    si := symbol.index(":")
+    if (null == si) {
+      if (!ns.isEmpty) {
+        symbol = "$ns:$symbol"        
+      }
+    } else {
+      symbolNs := symbol[0..<si]
+      if (ns != symbolNs && !deps.contains(symbolNs)) {
+        deps.add(symbolNs)
+      }
+    }
+    return E.nt(symbol)    
   }
 }

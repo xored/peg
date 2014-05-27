@@ -325,4 +325,89 @@ class ParserTest : Test
     node.kids.each { traverse(it, f) }
   }
   
+  Void testNamespace(){
+    //verify that after symbol '@' must be identifier
+    verifyErr(ParseErr#) { Parser(Grammar.fromStr("@ A <- ."), ListHandler()).run("a".toBuf) }
+    
+    grammarText := 
+         "@Z
+          Number <- ((Real / Int) ' '?)* Utils:EOF
+          Int <- Tokens:Part
+          Real <- Tokens:Part '.' Tokens:Part"
+    
+    tokensGrammarText := "@Tokens Part <- [0-9]+"    
+    utilsGrammarText := "@Utils EOF <- !."
+    
+    input := "75 33.23 11"
+    
+    grammar := Grammar.fromStr(grammarText)
+    tokensGrammar := Grammar.fromStr(tokensGrammarText)
+    utilsGrammar := Grammar.fromStr(utilsGrammarText)
+    
+    //check grammar dependencies
+    verifyEq(((GrammarImpl)grammar).dependencies, ["Tokens", "Utils"])
+    
+    //verify that the parser match is type of NotFound if the grammar dependencies is not found
+    lh:= ListHandler()    
+    p:= Parser(grammar, lh).run(input.toBuf)
+    verifyType(p.match, NotFound#)
+    
+    //
+    multiGrammar := getMultiGrammar(grammar, [tokensGrammar, utilsGrammar])
+    root := Parser.tree(multiGrammar, input.toBuf)
+    
+    ints := Str[,]
+    reals := Str[,]
+    tokens := Str[,]
+    traverse(root) |Block b| {
+      if ("Z:Int" == b.name) {
+        ints.add(input[b.range])
+      }
+      if ("Z:Real" == b.name) {
+        reals.add(input[b.range])
+      }
+      if("Tokens:Part" == b.name){
+        tokens.add(input[b.range])
+      }
+    }
+    verifyEq(ints, ["75", "11"])
+    verifyEq(reals, ["33.23"])    
+    verifyEq(tokens, ["75","33", "23", "11"])
+    
+  }
+  
+  ** Builds MutltiGrammar instance
+  private static Grammar getMultiGrammar(GrammarImpl base, GrammarImpl [] deps) {
+    ret := Grammar[,]
+    ret.add(base)
+    
+    usedNs := Str[,]
+    usedNs.add(base.namespace)
+    
+    namespaces := Str[,]
+    base.dependencies.each 
+    {
+      if(!usedNs.contains(it))
+        namespaces.push(it)
+    }
+    
+    while(!namespaces.isEmpty){
+      depNs := namespaces.removeAt(0)
+      depGrammar := deps.find { it.namespace==depNs }
+      if(depGrammar==null)
+        throw ArgErr("Dependency grammar not found: $depNs")
+      
+      if (usedNs.contains(depGrammar.namespace)) {
+        continue;
+      }
+      
+      ret.add(depGrammar);
+      usedNs.add(depGrammar.namespace);
+      depGrammar.dependencies.each { if (!usedNs.contains(it)) {
+          namespaces.push(it);
+        }
+      }
+    }
+    return MultiGrammar(base.start, ret);
+  }  
 }

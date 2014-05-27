@@ -1,3 +1,6 @@
+27-May-2014: v0.8.4
+	* Namespaces support
+
 26-May-2014: v0.8.3
 	* Lazy repetition extension: "A *? B" expression, which means "(!B A)* B"
 
