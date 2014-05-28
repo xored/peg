@@ -345,7 +345,7 @@ class ParserTest : Test
     utilsGrammar := Grammar.fromStr(utilsGrammarText)
     
     //check grammar dependencies
-    verifyEq(((GrammarImpl)grammar).dependencies, ["Tokens", "Utils"])
+    verifyEq(grammar.dependencies, ["Tokens", "Utils"])
     
     //verify that the parser match is type of NotFound if the grammar dependencies is not found
     lh:= ListHandler()    
@@ -354,6 +354,9 @@ class ParserTest : Test
     
     //
     multiGrammar := getMultiGrammar(grammar, [tokensGrammar, utilsGrammar])
+    //verify that namespaces and dependencies of 'grammar' and 'multigrammar' are equals
+    verifyEq(multiGrammar.namespace, grammar.namespace)
+    verifyEq(multiGrammar.dependencies, grammar.dependencies)
     root := Parser.tree(multiGrammar, input.toBuf)
     
     ints := Str[,]
@@ -374,10 +377,61 @@ class ParserTest : Test
     verifyEq(reals, ["33.23"])    
     verifyEq(tokens, ["75","33", "23", "11"])
     
+    //=============== verify combines of multigrammars ===============
+    //rebuild 'grammar' without EOF 
+    grammarText = "@Z
+                   Number <- ((Real / Int) ' '?)*
+                   Int <- Tokens:Part
+                   Real <- Tokens:Part '.' Tokens:Part"
+    grammar = Grammar.fromStr(grammarText)
+
+    zGrammar := getMultiGrammar(grammar, [tokensGrammar])
+
+    wordsGrammarText := "@Words Word <- Symbols:Part"
+    symbolsGrammarText := "@Symbols
+                            Part <- [a-z]+
+                            CapitalPart <- [A-Z]+
+                            "//with one unused rule
+    wordsGrammar := Grammar.fromStr(wordsGrammarText)
+    symbolsGrammar := Grammar.fromStr(symbolsGrammarText)
+    verifyEq(wordsGrammar.namespace, "Words")
+    verifyEq(wordsGrammar.dependencies, ["Symbols"])
+    verifyEq(symbolsGrammar.namespace, "Symbols")
+    verifyEq(symbolsGrammar.dependencies, Str[,])
+
+    wordsMultiGrammar := getMultiGrammar(wordsGrammar, [symbolsGrammar])
+    verifyEq(wordsMultiGrammar.namespace, wordsGrammar.namespace)
+    verifyEq(wordsMultiGrammar.dependencies, wordsGrammar.dependencies)
+
+    rootGrammarText := "@Root
+                        Main <- Words:Word ' ' Z:Number Utils:EOF"
+
+    rootGrammar := Grammar.fromStr(rootGrammarText)
+    verifyEq(rootGrammar.namespace, "Root")
+    verifyEq(rootGrammar.dependencies, ["Utils", "Z", "Words"])
+    multiGrammar = MultiGrammar(rootGrammar.start, [rootGrammar, zGrammar, wordsMultiGrammar, utilsGrammar])
+    input = "helloworld 75 33.23 11"
+
+    root = Parser.tree(multiGrammar, input.toBuf)
+    ints = Str[,]; reals = Str[,]; tokens = Str[,]
+    symbols := Str[,]
+    traverse(root) |Block b| {
+      switch(b.name) {
+        case "Z:Int":  ints.add(input[b.range])
+        case "Z:Real": reals.add(input[b.range])
+        case "Tokens:Part": tokens.add(input[b.range])
+        case "Symbols:Part": symbols.add(input[b.range])
+        default :
+      }
+    }
+    verifyEq(ints, ["75", "11"])
+    verifyEq(reals, ["33.23"])    
+    verifyEq(tokens, ["75","33", "23", "11"])
+    verifyEq(symbols, ["helloworld"])
   }
   
   ** Builds MutltiGrammar instance
-  private static Grammar getMultiGrammar(GrammarImpl base, GrammarImpl [] deps) {
+  private static Grammar getMultiGrammar(Grammar base, Grammar [] deps) {
     ret := Grammar[,]
     ret.add(base)
     

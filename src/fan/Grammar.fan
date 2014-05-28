@@ -16,6 +16,11 @@ const mixin Grammar
   ** But this is inconvenient to work with. 
   abstract Str start()
   
+  ** Namespace of the grammar
+  abstract Str namespace()
+  ** Namespaces from which the grammar depends
+  abstract Str[] dependencies()
+
   ** Parses a grammar text and returns the parsed grammar. 
   ** May throw ParseErr.
   static Grammar fromStr(Str grammar) {
@@ -36,9 +41,9 @@ const class GrammarImpl : Grammar
   
   override const Str start  
   ** Namespace of the grammar
-  const Str namespace
+  override const Str namespace
   ** Namespaces from which the grammar depends
-  const Str[] dependencies    
+  override const Str[] dependencies
   
   new make(Str start, Str:Expression rules, Str namespace := "", Str[] dependencies := Str[,]) {
     this.rules = rules
@@ -108,18 +113,29 @@ const class MultiGrammar : Grammar
   private const Str:Grammar grammars
   
   override const Str start
+  override const Str namespace
+  override const Str[] dependencies
   
-  new make(Str start, GrammarImpl[] grammars) {
+  new make(Str start, Grammar[] grammars) {
     this.start = start
     t := Str:Grammar[:]
+    ns := ""
+    deps := [,]
     grammars.each {
       if (null == t[it.namespace]) {
+        if(it.start.equals(start)) {
+          //we found base grammar
+          ns = it.namespace
+          deps = it.dependencies
+        }
         t[it.namespace] = it        
       } else {
         throw ArgErr("Duplicate ${moduleName(it.namespace)}")
       }
     }
     this.grammars = t
+    this.namespace = ns
+    this.dependencies = deps
   }
   
   override Str[] nonterminals() { 
@@ -132,8 +148,12 @@ const class MultiGrammar : Grammar
     ci := nt.index(":")
     if (null == ci) {      
       return grammars[""][nt]
-    } else {      
-      return grammars[nt[0..<ci]]?.get(nt)
+    } else {
+      g:= grammars[nt[0..<ci]]
+      if(g==null) {
+        g = grammars.find { it.nonterminals.contains(nt) }
+      }
+      return g?.get(nt)
     }
   }
   
