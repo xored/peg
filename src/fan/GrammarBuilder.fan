@@ -177,6 +177,14 @@ class GrammarBuilder
       
     case "DOT":
       e = dot
+
+    case "INDENT":
+      pop("INDENT")
+      e = E.indent
+
+    case "DEDENT":
+      pop("DEDENT")
+      e = E.dedent
       
     default:
       throw ArgErr("Expected 'Identifier', 'CLOSE', 'Literal', 'Class' or 'DOT' at ${curInd} index, but got $n")

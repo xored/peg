@@ -463,5 +463,90 @@ class ParserTest : Test
       }
     }
     return MultiGrammar(base.start, ret);
-  }  
+  }
+
+  Void testIndent() {
+    input := "prices = {'apple': 0.40, 'banana': 0.50}
+              my_purchase = {
+                            'apple': 1,
+                            'banana': 6}
+              grocery_bill = sum(prices[fruit] * my_purchase[fruit]
+                                for fruit in my_purchase)
+              print grocery_bill
+              "
+    grammarText := "Py    <- E*? EOF
+                    E     <- Id Space Eq Space Value / (Id Space)*? EOL
+                    Id    <- [A-Za-z_]+
+                    Eq    <- '='
+                    Space <- [ \t]*
+                    Value <- .*? EOL (INDENT Sub*? DEDENT)?
+                    Sub   <- .*? EOL
+                    EOL   <- '\n'
+                    EOF   <- !."
+    grammar := Grammar.fromStr(grammarText)
+    root := Parser.tree(grammar, input.toBuf)
+    subs := Str[,]
+    traverse(root) |Block b| {
+      switch(b.name) {
+        case "Sub":  subs.add(input[b.range])
+        default :
+      }
+    }
+    verifyEq(subs, ["'apple': 1,
+                     ", 
+                    "'banana': 6}
+                     ",
+                    "for fruit in my_purchase)
+                     "])
+    
+    //test for nested indents
+    input = "aaaaaaa
+                bbbbbb
+                bbbb
+                   ccccccc
+                      ddddddd
+                   cccccc
+                bbbb
+             "
+    grammarText = "A <- 'a'+ EOL INDENT L*? DEDENT EOF
+                   L <- B EOL / INDENT L1*? DEDENT                     
+                   L1 <- C EOL / INDENT D EOL DEDENT
+                   B <- 'b'+
+                   C <- 'c'+
+                   D <- 'd'+
+                   EOL <- '\n'
+                   EOF <- !."
+    grammar = Grammar.fromStr(grammarText)    
+    root = Parser.tree(grammar, input.toBuf)
+
+    bs := Str[,]; cs := Str[,]; ds := Str[,]
+    traverse(root) |Block b| {
+      switch(b.name) {
+        case "B":  bs.add(input[b.range])
+        case "C":  cs.add(input[b.range])
+        case "D":  ds.add(input[b.range])
+        default :
+      }
+    }    
+
+    verifyEq(bs, ["bbbbbb", "bbbb", "bbbb"])
+    verifyEq(cs, ["ccccccc", "cccccc"])
+    verifyEq(ds, ["ddddddd"])
+
+    //test for wrong indents
+    input = "a
+              b
+                bb"
+    grammarText = "A <- 'a'+ '\n' INDENT L*? DEDENT !.
+                   L <- 'b'+ '\n'"
+    grammar = Grammar.fromStr(grammarText)
+    p := Parser(grammar, ListHandler()).run(input.toBuf)
+    verifyType(p.match, EofMatch#)
+
+    input = "a
+                    b
+                   b"
+    p = Parser(grammar, ListHandler()).run(input.toBuf)
+    verifyType(p.match, PredicateFailed#)
+  }
 }

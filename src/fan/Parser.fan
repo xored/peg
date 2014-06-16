@@ -114,9 +114,19 @@ class ParserState {
   ** Current position in the buffer.
   Int charPos := 0
   Int bytePos := 0
-  
+
+  ** Indent
+  Int currentIndentLevel := 0
+
   private Parser parser
-  
+
+  ** Indent stack to save indents when under optional or primary clause
+  private Int[] indentStack := Int[,]
+  ** Map, where keys are 'bypePos'es and values are 'charPos'es, which corresponds to indent at begin of line
+  private Range:Range skipedRanges := Range:Range[:]
+  ** Array of charPos'es of end of line characters ('\n')
+  private Int[] eolPos := Int[,]
+
   internal new make(Parser parser) {
     this.parser = parser
     initStack
@@ -137,11 +147,11 @@ class ParserState {
   Void pop() { stack.pop }  
   
   Int? readChar() {
-    ret := buf.readChar
-    if (null != ret) {
-      this.bytePos = buf.pos
-      this.charPos += 1
+    if(isInEolPos && currentIndentLevel > 0) {
+      skipIndent
     }
+    ret := readCharPrivate
+    setEolByChar(ret)
     return ret
   }
   
@@ -169,12 +179,12 @@ class ParserState {
     if (buf.remaining < size) {
       return null
     }
-    try {      
-      ret := buf.readChars(size)      
-      this.bytePos = buf.pos
-      this.charPos += ret.size
+    try {
+      characters := StrBuf()
+      size.times { characters.add(readChar.toChar) }
+      ret := characters.toStr
       return ret
-    } catch (IOErr e) {
+    } catch (Err e) {
       // unexpected eof
       return null
     }
@@ -186,6 +196,7 @@ class ParserState {
     buf.seek(bytePos)
     this.charPos = charPos
     this.bytePos = bytePos
+    removeEolPosAfterCurrent
   }
   
   Void error(Match m) {
@@ -202,18 +213,21 @@ class ParserState {
     if (0 == predicate) {
       handler.push
     }
+    indentStack.push(currentIndentLevel)
   }
   
   Void handlerApply() {
     if (0 == predicate) {
       handler.apply
     }
+    indentStack.pop
   }
   
   Void handlerRollback() {
     if (0 == predicate) {
       handler.rollback
     }
+    currentIndentLevel = indentStack.pop
   }
   
   Bool atCurPos(StackRecord r) { bytePos == r.bytePos && charPos == r.charPos }
@@ -221,7 +235,96 @@ class ParserState {
   private Void initStack() {
     push(E.nt(grammar.start))    
   }
-  
+
+  private Int? readCharPrivate() {
+    ret := buf.readChar
+    if (null != ret) {
+      this.bytePos = buf.pos
+      this.charPos += 1
+    }
+    return ret
+  }
+
+  Int readIndent() {
+    ind := 0
+    
+    //if last read character is not 'end of line' ('\n') then there is no indent 
+    if(!isInEolPos)
+      return ind
+
+    //save position
+    curBytePos := bytePos
+    curCharPos := charPos
+
+    while(true) {
+      c := readCharPrivate
+      if(null == c) {
+        // EOF
+        ind = 0
+        break
+      }
+      switch(c) {
+        case ' ': ind++; continue
+        case '\t': ind += 8; continue
+        case '\n': ind = 0; continue
+        default: break
+      }
+    }
+    //restore position
+    seek(curBytePos, curCharPos);
+    return ind
+  }
+
+  private Void skipIndent() {
+    i := 0
+    curBytePos := bytePos
+    curCharPos := charPos
+    while(i<currentIndentLevel) {
+      c := readCharPrivate
+      if(c == ' ')
+        i++
+      else if(c == '\t')
+        i += 8
+      else {
+        match = UnexpectedStr(bytePos, charPos, "Space or tab", "${c!=null?c.toChar:Str<||>}")
+        break
+      }
+    }
+    if(!skipedRanges.containsKey(curBytePos..<bytePos))
+      skipedRanges.add(curBytePos..<bytePos, curCharPos..<charPos)
+  }
+
+  Range:Range skipIndentRange(Range bytePosRange, Range charPosRange) {
+    f := skipedRanges.findAll |k, v| { bytePosRange.start==k.start && bytePosRange.end >= k.end }
+    if(f.size==0)
+      return [bytePosRange:charPosRange]
+    else {
+      index := 0
+      for(i := 0; i < f.size; i++) {
+        if(f.keys[index].end < f.keys[i].end)
+          index = i
+      }
+      bytePosStart := f.keys.get(index).end
+      charPosStart := f.vals.get(index).end
+      newBytePosRange := bytePosRange.exclusive? bytePosStart..<bytePosRange.end : bytePosStart..bytePosRange.end
+      newCharPosRange := charPosRange.exclusive? charPosStart..<charPosRange.end : charPosStart..charPosRange.end
+      return [newBytePosRange:newCharPosRange]
+    }
+  }
+
+  private Void removeEolPosAfterCurrent() {
+    while(eolPos.peek>charPos)
+      eolPos.pop
+  }
+
+  private Bool isInEolPos() {
+    eolPos.contains(charPos)
+  }
+
+  private Void setEolByChar(Int? character) {
+    if(character != null && character == '\n')
+      eolPos.push(charPos)
+  }
 }
 
 @Js

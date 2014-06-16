@@ -1,3 +1,6 @@
+16-Jun-2014: v0.8.6
+	* Off-side rule support (INDENT/DEDENT)
+
 28-May-2014: v0.8.5
 	* Namespaces API refactoring
 

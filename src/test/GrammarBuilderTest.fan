@@ -55,6 +55,10 @@ class GrammarBuilderTest : Test
     verifyGrammar("@Z A <- . U:B", GrammarImpl("Z:A", ["Z:A": E.seq([E.any, "#U:B"])], "Z", ["U"]))
     verifyGrammar("A <- .", GrammarImpl("A", ["A": E.any], ""))
     verifyGrammar("@A A <- a", GrammarImpl("A:A", ["A:A": E.nt("A:a")], "A"))
+
+    // indents
+    verifyGrammar("A <- INDENT", GrammarImpl("A", ["A": E.indent]))
+    verifyGrammar("A <- DEDENT", GrammarImpl("A", ["A": E.dedent]))
   }
   
   Void testRefine() {

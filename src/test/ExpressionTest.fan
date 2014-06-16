@@ -12,6 +12,8 @@ class ExpressionTest : Test
     verifyEq(E.choice([E.empty, E.any]), Choice([E.empty, E.any]))
     verifyEq(E.rep(E.t("0")), Rep(E.t("0")))
     verifyEq(E.not(E.t("0")), Not(E.t("0")))
+    verifyEq(E.indent, Indent())
+    verifyEq(E.dedent, Dedent())
     
     // desugaring
     verifyEq(E.clazz(['0'..'1']), Class(['0'..'1']))

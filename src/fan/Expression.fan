@@ -201,7 +201,8 @@ const class Nt : Expression {
         state.pop
         if (0 == state.predicate) {
           // visit block, only if we're not under predicate
-          state.handler.visit(BlockImpl(name, r.charPos..<state.charPos, r.bytePos..<state.bytePos))
+          ranges := state.skipIndentRange(r.charPos..<state.charPos, r.bytePos..<state.bytePos)
+          state.handler.visit(BlockImpl(name, ranges.keys.get(0), ranges.vals.get(0)))
         }
     }    
   }
@@ -397,6 +398,42 @@ const class Not : Expression {
   }
 }
 
+** Indent expression. Has no kids.
+@Js
+const class Indent : Expression {
+  new make() : super() {}
+
+  override Str toStr() { "INDENT" }
+
+  override Void perform(ParserState state) {
+    indent := state.readIndent
+    if(indent > state.currentIndentLevel) {
+      state.currentIndentLevel = indent
+      state.success
+    } else {
+      state.lack
+    }
+  }
+}
+
+** Dedent expression. Has no kids.
+@Js
+const class Dedent : Expression {
+  new make() : super() {}
+
+  override Str toStr() { "DEDENT" }
+
+  override Void perform(ParserState state) {
+    indent := state.readIndent
+    if(indent < state.currentIndentLevel) {
+      state.currentIndentLevel = indent
+      state.success
+    } else {
+      state.lack
+    }
+  }
+}
+
 ** Expression factory. 
 ** Use this factory instead of direct expression classes.
 ** 
@@ -467,6 +504,12 @@ const class E {
   ** Lazy zero-or-more repetition (e*? e2)
   ** It's translated into (!e2 e)* e2
   static Expression lazyRep(Obj e, Obj e2) { Seq([rep(seq([not(e2), parse(e)])), parse(e2)])}
+
+  ** Indent expression
+  static Expression indent() { Indent() }
+
+  ** Dedent expression
+  static Expression dedent() { Dedent() }
 
   private static Expression parse(Obj e) {
     if (e is Expression) {
