@@ -147,7 +147,7 @@ const class NotFound : Match {
   const Str symbol
   
   new make(Str symbol) : super(MatchState.fatal, 0, 0) { this.symbol = symbol }
-  override protected Str explanation() { "Non-terminal symbol '$symbol' not found in the grammar" }
+  override protected Str explanation() { "Non-terminal symbol (rule) '$symbol' not found in the grammar" }
 }
 
 ** fatal match: grammar has an infinite loop, and parser reached it. 
