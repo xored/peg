@@ -115,15 +115,16 @@ class ParserState {
   Int charPos := 0
   Int bytePos := 0
 
-  ** Indent
-  Int currentIndentLevel := 0
-
   private Parser parser
 
+  ** Indents
+  private Int[] indents := Int[,]
   ** Indent stack to save indents when under optional or primary clause
-  private Int[] indentStack := Int[,]
+  private Int[][] indentStack := Int[][,]
   ** Map, where keys are 'bypePos'es and values are 'charPos'es, which corresponds to indent at begin of line
   private Range:Range skipedRanges := Range:Range[:]
+  ** The flag indicates that the last read character is the end of line
+  private Bool isInEolPos := false
   ** Array of charPos'es of end of line characters ('\n')
   private Int[] eolPos := Int[,]
 
@@ -151,7 +152,7 @@ class ParserState {
       skipIndent
     }
     ret := readCharPrivate
-    setEolByChar(ret)
+    setEolByChar(ret, charPos)
     return ret
   }
   
@@ -180,10 +181,20 @@ class ParserState {
       return null
     }
     try {
-      characters := StrBuf()
-      size.times { characters.add(readChar.toChar) }
-      ret := characters.toStr
-      return ret
+      //for performance increasing
+      if(currentIndentLevel==0) {
+        ret := buf.readChars(size)
+        ret.size.times |i| {
+          setEolByChar(ret[i], charPos + i + 1)
+        }
+        this.bytePos = buf.pos
+        this.charPos += ret.size
+        return ret
+      } else {
+        characters := StrBuf()
+        size.times { characters.add(readChar.toChar) }
+        return characters.toStr
+      }
     } catch (Err e) {
       // unexpected eof
       return null
@@ -196,7 +207,7 @@ class ParserState {
     buf.seek(bytePos)
     this.charPos = charPos
     this.bytePos = bytePos
-    removeEolPosAfterCurrent
+    checkCharPosForEol
   }
   
   Void error(Match m) {
@@ -213,7 +224,7 @@ class ParserState {
     if (0 == predicate) {
       handler.push
     }
-    indentStack.push(currentIndentLevel)
+    indentStack.push(indents.dup)
   }
   
   Void handlerApply() {
@@ -227,7 +238,7 @@ class ParserState {
     if (0 == predicate) {
       handler.rollback
     }
-    currentIndentLevel = indentStack.pop
+    indents = indentStack.pop
   }
   
   Bool atCurPos(StackRecord r) { bytePos == r.bytePos && charPos == r.charPos }
@@ -294,10 +305,13 @@ class ParserState {
       skipedRanges.add(curBytePos..<bytePos, curCharPos..<charPos)
   }
 
-  Range:Range skipIndentRange(Range bytePosRange, Range charPosRange) {
+  ** Returns array which has 2 elements: new 'bytePosRange' and new 'charPosRange'
+  Range[] skipIndentRange(Range bytePosRange, Range charPosRange) {
+    if(skipedRanges.size==0) //for performance optimization
+      return [bytePosRange, charPosRange]
     f := skipedRanges.findAll |k, v| { bytePosRange.start==k.start && bytePosRange.end >= k.end }
     if(f.size==0)
-      return [bytePosRange:charPosRange]
+      return [bytePosRange, charPosRange]
     else {
       index := 0
       for(i := 0; i < f.size; i++) {
@@ -308,22 +322,42 @@ class ParserState {
       charPosStart := f.vals.get(index).end
       newBytePosRange := bytePosRange.exclusive? bytePosStart..<bytePosRange.end : bytePosStart..bytePosRange.end
       newCharPosRange := charPosRange.exclusive? charPosStart..<charPosRange.end : charPosStart..charPosRange.end
-      return [newBytePosRange:newCharPosRange]
+      return [newBytePosRange, newCharPosRange]
     }
   }
 
-  private Void removeEolPosAfterCurrent() {
-    while(eolPos.peek>charPos)
-      eolPos.pop
+  private Void checkCharPosForEol() {
+    isInEolPos = false
+    for(i := eolPos.size - 1; i >= 0; i--) {
+      if(eolPos[i]==charPos) {
+        isInEolPos = true
+        break
+      }
+      if(eolPos[i]<charPos) break
+    }
   }
 
-  private Bool isInEolPos() {
-    eolPos.contains(charPos)
+  private Void setEolByChar(Int? character, Int charPos) {
+    if(character == '\n') {
+      isInEolPos = true
+      if(eolPos.peek<charPos)
+        eolPos.push(charPos)
+    }
+    else isInEolPos = false
+  }
+  
+  ** Current indent
+  Int currentIndentLevel() {
+    p := indents.peek
+    return p==null ? 0 : p
   }
 
-  private Void setEolByChar(Int? character) {
-    if(character != null && character == '\n')
-      eolPos.push(charPos)
+  Void pushIndent(Int indent) {
+    indents.push(indent)
+  }
+  
+  Void popIndent() {
+    indents.pop
   }
 }
 
