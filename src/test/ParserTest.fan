@@ -549,4 +549,19 @@ class ParserTest : Test
     p = Parser(grammar, ListHandler()).run(input.toBuf)
     verifyType(p.match, PredicateFailed#)
   }
+  
+  Void testIndent2() {
+    input := "Tфйцук
+              a
+                b
+                b
+
+              c"
+    grammar := "Top <- .*? EOL 'a' EOL INDENT B*? DEDENT .* EOF
+                B <- 'b'
+                EOL <- '\n'
+                EOF <- !."
+    i := input.index("b")
+    wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
+  }
 }
