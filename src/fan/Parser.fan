@@ -256,12 +256,13 @@ class ParserState {
     return ret
   }
 
+  ** Returns indent level. If there is no indent then returns '-1' (the last read character is not new line)
   Int readIndent() {
-    ind := 0
-    
-    //if last read character is not 'end of line' ('\n') then there is no indent 
+    //if last read character is not 'end of line' ('\n') then there is no indent
     if(!isInEolPos)
-      return ind
+      return -1
+
+    ind := 0
 
     //save position
     curBytePos := bytePos
@@ -309,7 +310,7 @@ class ParserState {
   Range[] skipIndentRange(Range bytePosRange, Range charPosRange) {
     if(skipedRanges.size==0) //for performance optimization
       return [bytePosRange, charPosRange]
-    f := skipedRanges.findAll |k, v| { bytePosRange.start==k.start && bytePosRange.end >= k.end }
+    f := skipedRanges.findAll |v, k| { bytePosRange.start==k.start && bytePosRange.end >= k.end }
     if(f.size==0)
       return [bytePosRange, charPosRange]
     else {

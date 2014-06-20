@@ -201,8 +201,8 @@ const class Nt : Expression {
         state.pop
         if (0 == state.predicate) {
           // visit block, only if we're not under predicate
-          ranges := state.skipIndentRange(r.charPos..<state.charPos, r.bytePos..<state.bytePos)
-          state.handler.visit(BlockImpl(name, ranges[0], ranges[1]))
+          ranges := state.skipIndentRange(r.bytePos..<state.bytePos, r.charPos..<state.charPos)
+          state.handler.visit(BlockImpl(name, ranges[1], ranges[0]))
         }
     }    
   }
@@ -407,7 +407,7 @@ const class Indent : Expression {
 
   override Void perform(ParserState state) {
     indent := state.readIndent
-    if(indent > state.currentIndentLevel) {
+    if(indent > state.currentIndentLevel && indent!=-1) {
       state.pushIndent(indent)
       state.success
     } else {
@@ -425,7 +425,7 @@ const class Dedent : Expression {
 
   override Void perform(ParserState state) {
     indent := state.readIndent
-    if(indent < state.currentIndentLevel) {
+    if(indent!=-1 && indent < state.currentIndentLevel) {
       state.popIndent
       state.success
     } else {

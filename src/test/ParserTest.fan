@@ -557,7 +557,7 @@ class ParserTest : Test
                 b
 
               c"
-    grammar := "Top <- .*? EOL 'a' EOL INDENT B*? DEDENT .* EOF
+    grammar := "Top <- .*? EOL 'a' EOL INDENT (B EOL)*? DEDENT .* EOF
                 B <- 'b'
                 EOL <- '\n'
                 EOF <- !."
