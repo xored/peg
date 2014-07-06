@@ -2,7 +2,7 @@
 ** PEG meta-grammar.
 ** This grammar is described in the original PEG paper 
 ** (http://pdos.csail.mit.edu/~baford/packrat/popl04/).
-** However, the grammar is modified to support some features like grammar namespaces and lazy repetition operator
+** However, the grammar is modified to support some features like grammar name spaces and lazy repetition operator.
 ** 
 ** This grammar is considered a low-level API and made public for special purposes only. 
 ** Please, avoid using it, if possible. It may change in future without backward compatibility.  
@@ -38,6 +38,10 @@ const class MetaGrammar : GrammarImpl
       "CLOSE" : E.t(")"),
       
       "OPEN" : E.t("("),
+      
+      "CURLYOPEN" : E.t("{"),
+      
+      "CURLYCLOSE" : E.t("}"),
       
       "PLUS" : E.t("+"),
       
@@ -103,17 +107,21 @@ const class MetaGrammar : GrammarImpl
         "#Spacing"
       ]),
       
+      "SparseCall" : E.seq(["#CURLYOPEN", "#Spacing", "#Identifier", "#Spacing", "#CURLYCLOSE", "#Spacing", E.and("#Expression")]), 
+      
       "LazyRepetition" : E.seq(["#STAR", "#QUESTION", "#Spacing", "#Prefix"]),
       
       "Suffix" : E.seq(["#Primary", E.opt([E.choice(["#LazyRepetition","#QUESTION", "#STAR", "#PLUS"]), "#Spacing"])]),
       
       "Prefix" : E.seq([E.opt([E.choice(["#AND", "#NOT"]), "#Spacing"]), "#Suffix"]),
       
-      "Sequence" : E.rep("#Prefix"),
+      "Sequence" : E.rep(E.seq([E.opt("#SparseCall"), "#Prefix"])),
       
-      "Expression" : E.seq(["#Sequence", E.rep(["#SLASH", "#Spacing", "#Sequence"])]),
+      "Expression" : E.choice(["#SparseBlock", E.seq(["#Sequence", E.rep(["#SLASH", "#Spacing", "#Sequence"])])]),
       
-      "Definition" : E.seq(["#DefinitionIdentifier", "#Spacing", "#LEFTARROW", "#Spacing", "#Expression"]),
+      "SparseBlock" : E.seq(["#CURLYOPEN", "#Spacing", E.rep1([E.not("#SparseBlock"), "#Definition"]), "#CURLYCLOSE", "#Spacing"]),
+      
+      "Definition" : E.seq(["#DefinitionIdentifier", "#Spacing", "#LEFTARROW", "#Spacing", E.choice(["#SparseBlock", "#Expression"])]),
       
       "Grammar" : E.seq([
         "#Spacing", 

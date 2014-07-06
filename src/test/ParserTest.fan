@@ -564,4 +564,19 @@ class ParserTest : Test
     i := input.index("b")
     wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
   }
+  
+  Void testSparse() {
+    input := "abcde"
+    grammar := "Top <- {Body} E EOF
+                Body <- { 
+                  C <- 'c' 
+                  A <- 'a'
+                  CUnused <- 'c'
+                }
+                E <- 'e'
+                EOF <- !."
+    i := input.index("c")
+    j := input.index("e")
+    wholeTest(input, ["C" : i..<(i+1), "E" : j..<(j+1)], Grammar.fromStr(grammar))
+  }
 }

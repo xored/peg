@@ -18,6 +18,7 @@ class GrammarBuilder
   private Str lastNt := ""
   private Str ns := ""
   private Str[] deps := [,]
+  private Str:Str[] sparse := [:]
   
   private new make(Str text, Block[] blocks) {
     this.text = text
@@ -86,21 +87,42 @@ class GrammarBuilder
     if (lastNt.isEmpty) {
       throw ArgErr("No rules found. Grammar can't be empty.")
     }
+    if (sparse.containsKey(lastNt)) {
+      throw ArgErr("Grammar can't start with a sparse block")
+    }
     return GrammarImpl(lastNt, rules, ns, deps)
   }
   
   private Void definition() {
     pop("Definition")
-    e := expression
-    pop("LEFTARROW")
-    lastNt = definitionIdentifier
-    rules[lastNt] = e
+    if ("SparseBlock" == peek.name) {
+      sparseBlock
+    } else {
+      e := expression
+      pop("LEFTARROW")
+      lastNt = definitionIdentifier
+      rules[lastNt] = e
+    }
   }
   
   private Str definitionIdentifier() { 
     ret := text[pop("DefinitionIdentifier").range]
     // DefinitionIdentifier can't have explicit namespace
     return ns.isEmpty ? ret : "$ns:$ret"    
+  }
+  
+  private Void sparseBlock() {
+    pop("SparseBlock")
+    pop("CURLYCLOSE")
+    rules := Str[,]
+    while ("Definition" == peek.name) {
+      definition
+      rules.add(lastNt)
+    }
+    pop("CURLYOPEN")
+    pop("LEFTARROW")
+    lastNt = definitionIdentifier
+    sparse[lastNt] = rules
   }
   
   private Expression expression() {
@@ -117,12 +139,28 @@ class GrammarBuilder
     pop("Sequence")
     elist := Expression[,]
     while ("Prefix" == peek.name) {
-      elist.add(prefix)
+      e := prefix
+      if (null != popIf("SparseCall")) {
+        e = sparseCall(e)
+      }
+      elist.add(e)
     }
     if (elist.isEmpty) {
       elist.add(E.empty)
     }
     return 1 == elist.size ? elist.first : E.seq(elist.reverse) 
+  }
+  
+  private Expression sparseCall(Expression tail) {
+    pop("CURLYCLOSE")
+    e := nt
+    s := ((Nt)e).symbol
+    pop("CURLYOPEN")
+    rules := sparse.get(s, null)
+    if (null == rules || rules.isEmpty) {
+      throw ArgErr("Sparse block ${s} not found")
+    }
+    return E.sparseCall(rules.reverse.map { E.nt(it) }, tail)
   }
   
   private Expression prefix() {
@@ -145,7 +183,7 @@ class GrammarBuilder
       e = E.rep(primary)
     } else if (null != popIf("PLUS")) {
       e = E.rep1(primary)
-    } else if(null != popIf("LazyRepetition") ) {
+    } else if (null != popIf("LazyRepetition")) {
       e2 := prefix
       pop("QUESTION")
       pop("STAR")

@@ -59,6 +59,15 @@ class GrammarBuilderTest : Test
     // indents
     verifyGrammar("A <- INDENT", GrammarImpl("A", ["A": E.indent]))
     verifyGrammar("A <- DEDENT", GrammarImpl("A", ["A": E.dedent]))
+    
+    // sparse blocks
+    sparseGrammar := GrammarImpl("A", [
+      "A": E.seq([E.rep(E.seq([E.not("#C"), E.choice(["#C", E.any])])), "#C"]), 
+      "C": E.t("c")]
+    )
+    verifyGrammar("A <- {B} C\n B <- { C <- 'c' }", sparseGrammar)
+    verifyGrammar("A <- {  B} C\n B <- { C <- 'c' }", sparseGrammar)
+    verifyGrammar("A <- {B    } C\n B <- { C <- 'c' }", sparseGrammar)
   }
   
   Void testRefine() {
@@ -79,6 +88,11 @@ class GrammarBuilderTest : Test
     verifyGrammar("A <- '\\\"'", GrammarImpl("A", ["A": E.t("\"")]))
   }
   
+  Void testInvalidGrammar() {
+    verifyInvalidSyntax("A <- {B}\n")
+    verifyInvalidSyntax("A <- {B} {C}\n")
+  }
+  
   private Void verifyGrammar(Str in, Grammar grammar) {
     lh := ListHandler()
     p := Parser(MetaGrammar.val, lh)
@@ -87,4 +101,11 @@ class GrammarBuilderTest : Test
     verifyEq(GrammarBuilder.run(in, lh.blocks), grammar)
   }
   
+  private Void verifyInvalidSyntax(Str in) {
+    lh := ListHandler()
+    p := Parser(MetaGrammar.val, lh)
+    p.run(in.toBuf)
+    verifyEq(MatchState.fail, p.match.state)
+  }
+ 
 }

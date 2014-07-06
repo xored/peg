@@ -510,7 +510,10 @@ const class E {
 
   ** Dedent expression
   static Expression dedent() { Dedent() }
-
+  
+  ** Sparse call expression
+  static Expression sparseCall(Obj[] sparseRules, Obj tailRule) { lazyRep(choice(sparseRules.dup.add(any)), tailRule) }
+  
   private static Expression parse(Obj e) {
     if (e is Expression) {
       return (Expression)e

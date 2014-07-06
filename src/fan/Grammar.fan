@@ -18,6 +18,7 @@ const mixin Grammar
   
   ** Namespace of the grammar
   abstract Str namespace()
+  
   ** Namespaces from which the grammar depends
   abstract Str[] dependencies()
 
@@ -38,10 +39,12 @@ const mixin Grammar
 const class GrammarImpl : Grammar 
 {  
   private const Str:Expression rules
-  
+ 
   override const Str start  
+  
   ** Namespace of the grammar
   override const Str namespace
+  
   ** Namespaces from which the grammar depends
   override const Str[] dependencies
   
@@ -144,17 +147,18 @@ const class MultiGrammar : Grammar
     return ret
   }
   
-  @Operator override Expression? get(Str nt) {
+  private Str extractNamespace(Str nt) {
     ci := nt.index(":")
-    if (null == ci) {      
-      return grammars[""][nt]
-    } else {
-      g:= grammars[nt[0..<ci]]
-      if(g==null) {
-        g = grammars.find { it.nonterminals.contains(nt) }
-      }
-      return g?.get(nt)
+    return (null == ci) ? "" : nt[0..<ci]
+  }
+  
+  @Operator override Expression? get(Str nt) {
+    ns := extractNamespace(nt)
+    g := grammars[ns]
+    if (null == g) {
+      g = grammars.find { it.nonterminals.contains(nt) }
     }
+    return g?.get(nt)
   }
   
   private static Str moduleName(Str namespace) {
