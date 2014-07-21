@@ -118,15 +118,24 @@ class ParserState {
   private Parser parser
 
   ** Indents
-  private Int[] indents := Int[,]
+  private IndentPart[] indents := IndentPart[,]
   ** Indent stack to save indents when under optional or primary clause
-  private Int[][] indentStack := Int[][,]
+  private IndentPart[][] indentStack := IndentPart[][,]
+  ** Flag that is set to true once started matching an indent (for the first
+  ** time) and is set to false when finished matching the indent. While the
+  ** flag is enabled, all the reported non-terminal Blocks are accumulated in
+  ** the 'indentBlocks' list to be reported on the following lines.
+  private Bool captureIndentBlocks := false
+  ** List to accumulate reported Blocks while matching an indent. To be
+  ** flushed to 'indents' once the indent is matched.
+  private Block[] indentBlocks := [,]
+
   ** Map, where keys are 'bypePos'es and values are 'charPos'es, which corresponds to indent at begin of line
   private Range:Range skipedRanges := Range:Range[:]
   ** The flag indicates that the last read character is the end of line
-  private Bool isInEolPos := false
-  ** Array of charPos'es of end of line characters ('\n')
-  private Int[] eolPos := Int[,]
+  Bool isInEolPos := false
+  ** Array of StreamPos'es of end of line characters ('\n')
+  private StreamPos[] eolPos := StreamPos[,]
 
   internal new make(Parser parser) {
     this.parser = parser
@@ -148,11 +157,11 @@ class ParserState {
   Void pop() { stack.pop }  
   
   Int? readChar() {
-    if(isInEolPos && currentIndentLevel > 0) {
+    if(isInEolPos && !indents.isEmpty) {
       skipIndent
     }
     ret := readCharPrivate
-    setEolByChar(ret, charPos)
+    setEolByChar(ret, StreamPos(charPos, bytePos))
     return ret
   }
   
@@ -181,20 +190,9 @@ class ParserState {
       return null
     }
     try {
-      //for performance increasing
-      if(currentIndentLevel==0) {
-        ret := buf.readChars(size)
-        ret.size.times |i| {
-          setEolByChar(ret[i], charPos + i + 1)
-        }
-        this.bytePos = buf.pos
-        this.charPos += ret.size
-        return ret
-      } else {
-        characters := StrBuf()
-        size.times { characters.add(readChar.toChar) }
-        return characters.toStr
-      }
+      characters := StrBuf()
+      size.times { characters.add(readChar.toChar) }
+      return characters.toStr
     } catch (Err e) {
       // unexpected eof
       return null
@@ -256,54 +254,75 @@ class ParserState {
     return ret
   }
 
-  ** Returns indent level. If there is no indent then returns '-1' (the last read character is not new line)
-  Int readIndent() {
-    //if last read character is not 'end of line' ('\n') then there is no indent
-    if(!isInEolPos)
-      return -1
+  private Str currentIndentStr() { indents.map { it.text }.join }
 
-    ind := 0
+  ** Checks if there is currently expected indentation in the buf
+  ** at the current position. Keeps buf position in place.
+  Bool isInIndentPos() {
+    indentMatched := true
 
     //save position
     curBytePos := bytePos
     curCharPos := charPos
 
-    while(true) {
+    indentStr := currentIndentStr
+
+    index := 0
+    while(index < indentStr.size) {
       c := readCharPrivate
-      if(null == c) {
-        // EOF
-        ind = 0
+      if (c != indentStr[index]) {
+        indentMatched = false
         break
       }
-      switch(c) {
-        case ' ': ind++; continue
-        case '\t': ind += 8; continue
-        case '\n': ind = 0; continue
-        default: break
-      }
+      ++index
     }
     //restore position
     seek(curBytePos, curCharPos);
-    return ind
+    return indentMatched
   }
 
+  ** Consumes currently expected indentation from the buf
+  ** and fails if it doesn't match.
+  ** When indentation is successfully matched, emits non-terminal blocks
+  ** associated with the indentation.
   private Void skipIndent() {
-    i := 0
+    //save position
     curBytePos := bytePos
     curCharPos := charPos
-    while(i<currentIndentLevel) {
+
+    indentStr := currentIndentStr
+
+    index := 0
+    while(index < indentStr.size) {
       c := readCharPrivate
-      if(c == ' ')
-        i++
-      else if(c == '\t')
-        i += 8
-      else {
-        match = UnexpectedStr(bytePos, charPos, "Space or tab", "${c!=null?c.toChar:Str<||>}")
+      if (c != indentStr[index]) {
+        match = UnexpectedStr(bytePos, charPos, indentStr[index].toChar, "${c!=null?c.toChar:Str<||>}")
         break
       }
+      ++index
     }
+
+    if (MatchState.fail != match.state) {
+      emitIndentBlocks
+    }
+
     if(!skipedRanges.containsKey(curBytePos..<bytePos))
       skipedRanges.add(curBytePos..<bytePos, curCharPos..<charPos)
+  }
+
+  private Block[] shiftBlocks(Block[] blocks, StreamPos pos) {
+    blocks.map {
+      BlockImpl(it.name, it.range.offset(pos.char), it.byteRange.offset(pos.byte))
+    }
+  }
+
+  private StreamPos currentLinePos() {
+    eolPos.isEmpty ? StreamPos(0, 0) : eolPos.peek
+  }
+
+  private Void emitIndentBlocks() {
+    blocks := indents.map { shiftBlocks(it.blocks, currentLinePos) }
+    blocks.flatten.each { handler.visit(it) }
   }
 
   ** Returns array which has 2 elements: new 'bytePosRange' and new 'charPosRange'
@@ -330,35 +349,54 @@ class ParserState {
   private Void checkCharPosForEol() {
     isInEolPos = false
     for(i := eolPos.size - 1; i >= 0; i--) {
-      if(eolPos[i]==charPos) {
+      if(eolPos[i].char == charPos) {
         isInEolPos = true
         break
       }
-      if(eolPos[i]<charPos) break
+      if(eolPos[i].char < charPos) break
     }
   }
 
-  private Void setEolByChar(Int? character, Int charPos) {
+  private Void setEolByChar(Int? character, StreamPos pos) {
     if(character == '\n') {
       isInEolPos = true
-      if(eolPos.peek<charPos)
-        eolPos.push(charPos)
+      if(eolPos.isEmpty || eolPos.peek.char < charPos)
+        eolPos.push(pos)
     }
     else isInEolPos = false
   }
   
-  ** Current indent
-  Int currentIndentLevel() {
-    p := indents.peek
-    return p==null ? 0 : p
+  Void pushIndentBlock(Block block) {
+    indentBlocks.push(block)
   }
 
-  Void pushIndent(Int indent) {
-    indents.push(indent)
+  Void pushIndent() {
+    // convert accumulated blocks to offsets from the line beginning
+    // to be able to emit them on upcoming lines
+    blocks := shiftBlocks(indentBlocks, -currentLinePos)
+    indents.push(IndentPart(matchedText, blocks))
   }
   
   Void popIndent() {
     indents.pop
+  }
+
+  private Str matchedText() {
+    matchedRange := (peek.bytePos + currentIndentStr.size)..<bytePos
+    return buf.getRange(matchedRange).readAllStr
+  }
+
+  Void startCapturingIndentBlocks() {
+    captureIndentBlocks = true
+  }
+
+  Void stopCapturingIndentBlocks() {
+    captureIndentBlocks = false
+    indentBlocks := [,]
+  }
+
+  Bool isCapturingIndentBlocks() {
+    return captureIndentBlocks
   }
 }
 
@@ -377,4 +415,30 @@ class StackRecord {
   new make(Expression e) { this.e = e }
   
   override Str toStr() { "{ index=$index, charPos=$charPos, bytePos=$bytePos e=$e }" }
+}
+
+@Js
+const class IndentPart {
+  const Str text
+  const Block[] blocks
+
+  new make(Str text, Block[] blocks) {
+    this.text = text
+    this.blocks = blocks
+  }
+}
+
+@Js
+const class StreamPos {
+  const Int char
+  const Int byte
+
+  new make(Int char, Int byte) {
+    this.char = char
+    this.byte = byte
+  }
+
+  @Operator StreamPos negate() {
+    StreamPos(-char, -byte)
+  }
 }

@@ -59,6 +59,9 @@ class GrammarBuilderTest : Test
     // indents
     verifyGrammar("A <- INDENT", GrammarImpl("A", ["A": E.indent]))
     verifyGrammar("A <- DEDENT", GrammarImpl("A", ["A": E.dedent]))
+
+    // Custom indents
+    verifyGrammar("A <- INDENT(a)", GrammarImpl("A", ["A": E.indent("a")]))
     
     // sparse blocks
     sparseGrammar := GrammarImpl("A", [

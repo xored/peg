@@ -294,9 +294,10 @@ class ParserTest : Test
     verifyType(p.match, NotFound#)
   }
   
-  private Void wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {
+  private Parser wholeTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {
     p := Parser(grammar, ListHandler()).run(in.toBuf)
     runResultsTest(p, blocks, grammar)
+    return p
   }
   
   private Void multiTest(Str in, Str:Range blocks := [:], Grammar grammar := MetaGrammar.val) {
@@ -563,6 +564,36 @@ class ParserTest : Test
                 EOF <- !."
     i := input.index("b")
     wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
+  }
+
+  Void testIndentCustom() {
+    input := "fooar
+              a
+              123.321 b
+              123.321 b
+
+              c"
+
+    grammar := "Top <- .*? EOL 'a' EOL INDENT(TimestampIndent) (B EOL)*? DEDENT .* EOF
+                TimestampIndent <- Timestamp ' '
+                Timestamp <- Number '.' Number
+                Number <- [0-9]+
+                B <- 'b'
+                EOL <- '\n'
+                EOF <- !."
+    i := input.index("b")
+    p := wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
+
+    // make sure non-terminals are reported for each line
+    lh := p.handler as ListHandler
+    expectedRanges := [
+      "Timestamp": [8..<15, 18..<25],
+      "Number": [8..<11, 12..<15, 18..<21, 22..<25]
+    ]
+    expectedRanges.each |Range[] expected, Str name| {
+      actual := lh.blocks.findAll { it.name == name }.map |b->Range| { b.range }
+      verifyEq(expected, actual)
+    }
   }
   
   Void testSparse() {

@@ -29,7 +29,7 @@ const class MetaGrammar : GrammarImpl
       
       "Spacing" : E.rep(E.choice(["#Space", "#Comment"])),
       
-      "INDENT" : E.t("INDENT"),
+      "INDENT": E.seq([E.t("INDENT"), E.opt(["#OPEN", "#Identifier", "#CLOSE"])]),
 
       "DEDENT" : E.t("DEDENT"),
       

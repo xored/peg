@@ -217,8 +217,7 @@ class GrammarBuilder
       e = dot
 
     case "INDENT":
-      pop("INDENT")
-      e = E.indent
+      e = indent
 
     case "DEDENT":
       pop("DEDENT")
@@ -312,5 +311,16 @@ class GrammarBuilder
       }
     }
     return E.nt(symbol)    
+  }
+
+  private Expression indent() {
+    pop("INDENT")
+    if (null != popIf("CLOSE")) { // Got an indent with a custom rule
+      rule := (Nt) nt
+      pop("OPEN")
+      return E.indent(rule.symbol)
+    }
+    // Got an ordinary whitespace indent
+    return E.indent
   }
 }
