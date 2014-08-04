@@ -65,7 +65,7 @@ const class MetaGrammar : GrammarImpl
       
       "Char" : E.choice([
         ["\\", E.clazz(['n', 'r', 't', '\'', '"', '[', ']', '\\'])],
-        ["\\u", "#HexDigit", "#HexDigit", "#HexDigit", "#HexDigit"],
+        ["\\u", "#HexDigit", "#HexDigit", "#HexDigit", "#HexDigit", E.opt("#HexDigit")],
         [E.not("\\"), E.any]
       ]),
       

@@ -247,13 +247,25 @@ class GrammarBuilder
     buf := StrBuf()
     for (i := 0; i < s.size; ++i) {
       if ('\\' == s[i] && (0 == i || '\\' != s[i-1]) && i < s.size - 5 && 'u' == s[i+1]) {
-        seq := s[i+2..i+5]
+        seq := ""
+        if (i < s.size - 6 && s[i+6].isDigit(16)) {
+          seq = s[i+2..i+6] 
+          i += 6
+        } else {
+          seq = s[i+2..i+5] 
+          i += 5
+        }
         escaped := Int.fromStr(seq, 16, false)
         if (null == escaped) {
           throw ArgErr("Invalid unicode escape sequence. Expected \\uNNNN, but got $seq")
         }
-        buf.addChar(escaped)
-        i += 5
+        if (escaped > 0xFFFF) {
+          escaped -= 0x10000
+          buf.addChar(0xD800 + escaped.shiftr(10))
+          buf.addChar(0xDC00 + escaped.and(0x3FF))
+        } else {
+          buf.addChar(escaped)
+        }
       } else {
         buf.addChar(s[i])
       }

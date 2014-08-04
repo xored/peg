@@ -617,8 +617,8 @@ class ParserTest : Test
     i := input.index("a")
     wholeTest(input, ["Top" : i..<(i+1)], Grammar.fromStr(grammar))
     
-    input = "1a2"
-    grammar = "Top <- '1\\u00612' !."
+    input = "1ax"
+    grammar = "Top <- '1\\u0061x' !."
     wholeTest(input, ["Top" : 0..<3], Grammar.fromStr(grammar))
     
     input = "\u0Fd2"
@@ -629,12 +629,16 @@ class ParserTest : Test
     grammar = "Top <- [\\u0061-b]* 'c' !."
     wholeTest(input, ["Top" : 0..<3], Grammar.fromStr(grammar))
     
-    input = "abc"
-    grammar = "Top <- [\\u0061b]* 'c' !."
+    input = "axc"
+    grammar = "Top <- [\\u0061x]* 'c' !."
     wholeTest(input, ["Top" : 0..<3], Grammar.fromStr(grammar))
     
     input = "ac"
     grammar = "Top <- [\\u0061]* 'c' !."
+    wholeTest(input, ["Top" : 0..<2], Grammar.fromStr(grammar))
+    
+    input = "\uDB7F\uDFFF"
+    grammar = "Top <- '\\uEFFFF' !."
     wholeTest(input, ["Top" : 0..<2], Grammar.fromStr(grammar))
   }
 }
