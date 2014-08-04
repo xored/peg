@@ -28,7 +28,7 @@ class GrammarBuilder
   
   private static Block[] skipUnused(Block[] blocks) {
     ret := Block[,]
-    skip := Str:Str ["EndOfLine":"", "Space":"", "Comment":"", "Spacing":"", "IdentStart":"", "IdentCont":"", "Ident":"", "AT":"", "COLON":""]
+    skip := Str:Str ["EndOfLine":"", "Space":"", "Comment":"", "Spacing":"", "IdentStart":"", "IdentCont":"", "Ident":"", "AT":"", "COLON":"", "HexDigit":""]
     blocks.each {
       if (null == skip[it.name]) {
         ret.add(it)
@@ -243,8 +243,26 @@ class GrammarBuilder
     return E.t(t)
   }
   
-  private Str refine(Str text) {
-    text
+  private static Str unescapeUnicode(Str s) {
+    buf := StrBuf()
+    for (i := 0; i < s.size; ++i) {
+      if ('\\' == s[i] && (0 == i || '\\' != s[i-1]) && i < s.size - 5 && 'u' == s[i+1]) {
+        seq := s[i+2..i+5]
+        escaped := Int.fromStr(seq, 16, false)
+        if (null == escaped) {
+          throw ArgErr("Invalid unicode escape sequence. Expected \\uNNNN, but got $seq")
+        }
+        buf.addChar(escaped)
+        i += 5
+      } else {
+        buf.addChar(s[i])
+      }
+    }
+    return buf.toStr
+  }
+  
+  private static Str refine(Str text) {
+    ret := text
       .replace("\\\\", "\\")
       .replace("\\t", "\t")
       .replace("\\n", "\n")
@@ -252,7 +270,8 @@ class GrammarBuilder
       .replace("\\'", "'")
       .replace("\\[", "[")
       .replace("\\]", "]")
-      .replace("\\\"", "\"")      
+      .replace("\\\"", "\"")
+    return unescapeUnicode(ret)
   }
   
   private Expression clazz() {

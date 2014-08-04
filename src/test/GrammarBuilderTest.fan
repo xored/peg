@@ -110,5 +110,4 @@ class GrammarBuilderTest : Test
     p.run(in.toBuf)
     verifyEq(MatchState.fail, p.match.state)
   }
- 
 }

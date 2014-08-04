@@ -26,7 +26,7 @@ const abstract class Expression
       t = kids[i] == o.kids[i]      
     }
     return t
-  }
+  }  
 }
 
 ** Empty expression. Has no kids.

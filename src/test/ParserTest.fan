@@ -610,4 +610,31 @@ class ParserTest : Test
     j := input.index("e")
     wholeTest(input, ["C" : i..<(i+1), "E" : j..<(j+1)], Grammar.fromStr(grammar))
   }
+  
+  Void testUnicodeEscape() {
+    input := "a"
+    grammar := "Top <- '\\u0061' !."
+    i := input.index("a")
+    wholeTest(input, ["Top" : i..<(i+1)], Grammar.fromStr(grammar))
+    
+    input = "1a2"
+    grammar = "Top <- '1\\u00612' !."
+    wholeTest(input, ["Top" : 0..<3], Grammar.fromStr(grammar))
+    
+    input = "\u0Fd2"
+    grammar = "Top <- '\\u0Fd2' !."
+    wholeTest(input, ["Top" : 0..<1], Grammar.fromStr(grammar))
+    
+    input = "abc"
+    grammar = "Top <- [\\u0061-b]* 'c' !."
+    wholeTest(input, ["Top" : 0..<3], Grammar.fromStr(grammar))
+    
+    input = "abc"
+    grammar = "Top <- [\\u0061b]* 'c' !."
+    wholeTest(input, ["Top" : 0..<3], Grammar.fromStr(grammar))
+    
+    input = "ac"
+    grammar = "Top <- [\\u0061]* 'c' !."
+    wholeTest(input, ["Top" : 0..<2], Grammar.fromStr(grammar))
+  }
 }

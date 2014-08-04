@@ -61,10 +61,13 @@ const class MetaGrammar : GrammarImpl
       
       "AT" : E.t("@"),
       
+      "HexDigit" : E.clazz(['a'..'f', 'A'..'F', '0'..'9']),
+      
       "Char" : E.choice([
         ["\\", E.clazz(['n', 'r', 't', '\'', '"', '[', ']', '\\'])],
+        ["\\u", "#HexDigit", "#HexDigit", "#HexDigit", "#HexDigit"],
         [E.not("\\"), E.any]
-      ]), // TODO: implement character code support such as \213 here
+      ]),
       
       "Range" : E.choice([
         ["#Char", E.t("-"), "#Char"],
