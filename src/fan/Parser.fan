@@ -73,27 +73,31 @@ class Parser
       return this
     }
     this.buf0 = buf
-    this.finished = finished    
-    // restore working state
-    state.match = Match.unknown
-    state.seek(state.bytePos, state.charPos)    
-    while (!state.match.isFatal && !state.stack.isEmpty) {
-      state.peek.e.perform(state)
-      if (MatchState.lack == match.state) {
-        if (this.finished) {
-          if (0 == state.optional) {
-            // finished and not under optional state => parsing error
-            state.match = EofMatch(state.bytePos, state.charPos, match)
+    try {
+      this.finished = finished    
+      // restore working state
+      state.match = Match.unknown
+      state.seek(state.bytePos, state.charPos)    
+      while (!state.match.isFatal && !state.stack.isEmpty) {
+        state.peek.e.perform(state)
+        if (MatchState.lack == match.state) {
+          if (this.finished) {
+            if (0 == state.optional) {
+              // finished and not under optional state => parsing error
+              state.match = EofMatch(state.bytePos, state.charPos, match)
+              break
+            }
+            // finished and under optional state => can do more, continue
+          } else {
+            // not finished -- stop this step regardless of optional state
             break
           }
-          // finished and under optional state => can do more, continue
-        } else {
-          // not finished -- stop this step regardless of optional state
-          break
-        }
-      } // lack state
-    } // while loop    
-    return this
+        } // lack state
+      } // while loop    
+      return this
+    } finally {
+      this.buf0 = null
+    }
   }
   
 }
