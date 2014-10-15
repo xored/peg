@@ -34,7 +34,7 @@ class ParserTest : Test
     
     numbers := "Numbers <- Number*
                 Number <- [0-9]+ / Spacing
-                Spacing <- ' ' / '\t' / '\n' / EOF
+                Spacing <- ' ' / '\\t' / '\\n' / EOF
                 EOF <- !."     
     infiniteLoopTest("", numbers)
     infiniteLoopTest("0 20 3", numbers)
@@ -245,7 +245,7 @@ class ParserTest : Test
     grammarText = 
           "A   <- P* EOF
            P   <- 'function' S [a-z]+ '(' ')' '{' B
-           S   <- ' ' / '\t' / '\n'
+           S   <- ' ' / '\\t' / '\\n'
            B   <- (C / .)*? '}'
            C   <- '/*' .*? '*/'          
            EOF <- !."
@@ -482,7 +482,7 @@ class ParserTest : Test
                     Space <- [ \t]*
                     Value <- .*? EOL (INDENT Sub*? DEDENT)?
                     Sub   <- .*? EOL
-                    EOL   <- '\n'
+                    EOL   <- '\\n'
                     EOF   <- !."
     grammar := Grammar.fromStr(grammarText)
     root := Parser.tree(grammar, input.toBuf)
@@ -515,7 +515,7 @@ class ParserTest : Test
                    B <- 'b'+
                    C <- 'c'+
                    D <- 'd'+
-                   EOL <- '\n'
+                   EOL <- '\\n'
                    EOF <- !."
     grammar = Grammar.fromStr(grammarText)    
     root = Parser.tree(grammar, input.toBuf)
@@ -538,8 +538,8 @@ class ParserTest : Test
     input = "a
               b
                 bb"
-    grammarText = "A <- 'a'+ '\n' INDENT L*? DEDENT !.
-                   L <- 'b'+ '\n'"
+    grammarText = "A <- 'a'+ '\\n' INDENT L*? DEDENT !.
+                   L <- 'b'+ '\\n'"
     grammar = Grammar.fromStr(grammarText)
     p := Parser(grammar, ListHandler()).run(input.toBuf)
     verifyType(p.match, EofMatch#)
@@ -560,10 +560,46 @@ class ParserTest : Test
               c"
     grammar := "Top <- .*? EOL 'a' EOL INDENT (B EOL)*? DEDENT .* EOF
                 B <- 'b'
-                EOL <- '\n'
+                EOL <- '\\n'
                 EOF <- !."
     i := input.index("b")
     wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
+  }
+
+  Void testIndent3() {
+    input := "startTest
+              _I1
+              _II2
+              _=I3
+              _=II4
+              _I0
+              endTest"
+    grammar := "Top <- 'startTest' EOL C 'endTest' EOF
+                C <- INDENT(Indent1) (D / E) DEDENT
+                D <- A* !B
+                E <- A* B* A
+                Indent1 <- '_'
+                Indent2 <- '='
+                A <- 'I'+ [0-2] EOL
+                B <- INDENT(Indent2) ('I'+ [0-9] EOL)* DEDENT
+                EOL <- '\\n'
+                EOF <- !."
+    start := "startTest\n".size;
+    end := input.index("endTest")
+
+    p := wholeTest(input, ["C" : start..<end], Grammar.fromStr(grammar))
+    lh := p.handler as ListHandler
+
+    // Check indent blocks.
+    // TODO: workarround for the EZ-94 bug. Really, the range 15..<16 is superfluous in the 'Indent1' list. 
+    expectedRanges := [
+      "Indent1": [10..<11, 14..<15, 19..<20, 24..<25, 15..<16, 30..<31],
+      "Indent2": [20..<21, 25..<26]
+    ]
+    expectedRanges.each |Range[] expected, Str name| {
+      actual := lh.blocks.findAll { it.name == name }.map |b->Range| { b.range }
+      verifyEq(expected, actual)
+    }
   }
 
   Void testIndentCustom() {
@@ -579,7 +615,7 @@ class ParserTest : Test
                 Timestamp <- Number '.' Number
                 Number <- [0-9]+
                 B <- 'b'
-                EOL <- '\n'
+                EOL <- '\\n'
                 EOF <- !."
     i := input.index("b")
     p := wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
