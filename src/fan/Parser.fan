@@ -138,8 +138,9 @@ class ParserState {
   private Range:Range skipedRanges := Range:Range[:]
   ** The flag indicates that the last read character is the end of line
   Bool isInEolPos := false
-  ** Array of StreamPos'es of end of line characters ('\n')
-  private StreamPos[] eolPos := StreamPos[,]
+
+  StreamPos currentPos := StreamPos(0, 0)
+  Int:Bool eolPoses := Int:Bool[:]
 
   internal new make(Parser parser) {
     this.parser = parser
@@ -320,9 +321,7 @@ class ParserState {
     }
   }
 
-  private StreamPos currentLinePos() {
-    eolPos.isEmpty ? StreamPos(0, 0) : eolPos.peek
-  }
+  private StreamPos currentLinePos() { currentPos }
 
   private Void emitIndentBlocks() {
     blocks := indents.map { shiftBlocks(it.blocks, currentLinePos) }
@@ -351,21 +350,14 @@ class ParserState {
   }
 
   private Void checkCharPosForEol() {
-    isInEolPos = false
-    for(i := eolPos.size - 1; i >= 0; i--) {
-      if(eolPos[i].char == charPos) {
-        isInEolPos = true
-        break
-      }
-      if(eolPos[i].char < charPos) break
-    }
+    isInEolPos = eolPoses.containsKey(charPos)
   }
 
   private Void setEolByChar(Int? character, StreamPos pos) {
     if(character == '\n') {
       isInEolPos = true
-      if(eolPos.isEmpty || eolPos.peek.char < charPos)
-        eolPos.push(pos)
+      eolPoses.set(pos.char, true)
+      currentPos = pos
     }
     else isInEolPos = false
   }
