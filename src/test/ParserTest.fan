@@ -34,7 +34,7 @@ class ParserTest : Test
     
     numbers := "Numbers <- Number*
                 Number <- [0-9]+ / Spacing
-                Spacing <- ' ' / '\\t' / '\\n' / EOF
+                Spacing <- ' ' / '\t' / '\n' / EOF
                 EOF <- !."     
     infiniteLoopTest("", numbers)
     infiniteLoopTest("0 20 3", numbers)
@@ -245,7 +245,7 @@ class ParserTest : Test
     grammarText = 
           "A   <- P* EOF
            P   <- 'function' S [a-z]+ '(' ')' '{' B
-           S   <- ' ' / '\\t' / '\\n'
+           S   <- ' ' / '\t' / '\n'
            B   <- (C / .)*? '}'
            C   <- '/*' .*? '*/'          
            EOF <- !."
@@ -466,172 +466,6 @@ class ParserTest : Test
     return MultiGrammar(base.start, ret);
   }
 
-  Void testIndent() {
-    input := "prices = {'apple': 0.40, 'banana': 0.50}
-              my_purchase = {
-                            'apple': 1,
-                            'banana': 6}
-              grocery_bill = sum(prices[fruit] * my_purchase[fruit]
-                                for fruit in my_purchase)
-              print grocery_bill
-              "
-    grammarText := "Py    <- E*? EOF
-                    E     <- Id Space Eq Space Value / (Id Space)*? EOL
-                    Id    <- [A-Za-z_]+
-                    Eq    <- '='
-                    Space <- [ \t]*
-                    Value <- .*? EOL (INDENT Sub*? DEDENT)?
-                    Sub   <- .*? EOL
-                    EOL   <- '\\n'
-                    EOF   <- !."
-    grammar := Grammar.fromStr(grammarText)
-    root := Parser.tree(grammar, input.toBuf)
-    subs := Str[,]
-    traverse(root) |Block b| {
-      switch(b.name) {
-        case "Sub":  subs.add(input[b.range])
-        default :
-      }
-    }
-    verifyEq(subs, ["'apple': 1,
-                     ", 
-                    "'banana': 6}
-                     ",
-                    "for fruit in my_purchase)
-                     "])
-    
-    //test for nested indents
-    input = "aaaaaaa
-                bbbbbb
-                bbbb
-                   ccccccc
-                      ddddddd
-                   cccccc
-                bbbb
-             "
-    grammarText = "A <- 'a'+ EOL INDENT L*? DEDENT EOF
-                   L <- B EOL / INDENT L1*? DEDENT                     
-                   L1 <- C EOL / INDENT D EOL DEDENT
-                   B <- 'b'+
-                   C <- 'c'+
-                   D <- 'd'+
-                   EOL <- '\\n'
-                   EOF <- !."
-    grammar = Grammar.fromStr(grammarText)    
-    root = Parser.tree(grammar, input.toBuf)
-
-    bs := Str[,]; cs := Str[,]; ds := Str[,]
-    traverse(root) |Block b| {
-      switch(b.name) {
-        case "B":  bs.add(input[b.range])
-        case "C":  cs.add(input[b.range])
-        case "D":  ds.add(input[b.range])
-        default :
-      }
-    }    
-
-    verifyEq(bs, ["bbbbbb", "bbbb", "bbbb"])
-    verifyEq(cs, ["ccccccc", "cccccc"])
-    verifyEq(ds, ["ddddddd"])
-
-    //test for wrong indents
-    input = "a
-              b
-                bb"
-    grammarText = "A <- 'a'+ '\\n' INDENT L*? DEDENT !.
-                   L <- 'b'+ '\\n'"
-    grammar = Grammar.fromStr(grammarText)
-    p := Parser(grammar, ListHandler()).run(input.toBuf)
-    verifyType(p.match, EofMatch#)
-
-    input = "a
-                    b
-                   b"
-    p = Parser(grammar, ListHandler()).run(input.toBuf)
-    verifyType(p.match, PredicateFailed#)
-  }
-  
-  Void testIndent2() {
-    input := "Tфйцук
-              a
-                b
-                b
-
-              c"
-    grammar := "Top <- .*? EOL 'a' EOL INDENT (B EOL)*? DEDENT .* EOF
-                B <- 'b'
-                EOL <- '\\n'
-                EOF <- !."
-    i := input.index("b")
-    wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
-  }
-
-  Void testIndent3() {
-    input := "startTest
-              _I1
-              _II2
-              _=I3
-              _=II4
-              _I0
-              endTest"
-    grammar := "Top <- 'startTest' EOL C 'endTest' EOF
-                C <- INDENT(Indent1) (D / E) DEDENT
-                D <- A* !B
-                E <- A* B* A
-                Indent1 <- '_'
-                Indent2 <- '='
-                A <- 'I'+ [0-2] EOL
-                B <- INDENT(Indent2) ('I'+ [0-9] EOL)* DEDENT
-                EOL <- '\\n'
-                EOF <- !."
-    start := "startTest\n".size;
-    end := input.index("endTest")
-
-    p := wholeTest(input, ["C" : start..<end], Grammar.fromStr(grammar))
-    lh := p.handler as ListHandler
-
-    // Check indent blocks.
-    // TODO: workarround for the EZ-94 bug. Really, the range 15..<16 is superfluous in the 'Indent1' list. 
-    expectedRanges := [
-      "Indent1": [10..<11, 14..<15, 19..<20, 24..<25, 15..<16, 30..<31],
-      "Indent2": [20..<21, 25..<26]
-    ]
-    expectedRanges.each |Range[] expected, Str name| {
-      actual := lh.blocks.findAll { it.name == name }.map |b->Range| { b.range }
-      verifyEq(expected, actual)
-    }
-  }
-
-  Void testIndentCustom() {
-    input := "fooar
-              a
-              123.321 b
-              123.321 b
-
-              c"
-
-    grammar := "Top <- .*? EOL 'a' EOL INDENT(TimestampIndent) (B EOL)*? DEDENT .* EOF
-                TimestampIndent <- Timestamp ' '
-                Timestamp <- Number '.' Number
-                Number <- [0-9]+
-                B <- 'b'
-                EOL <- '\\n'
-                EOF <- !."
-    i := input.index("b")
-    p := wholeTest(input, ["B" : i..<(i+1)], Grammar.fromStr(grammar))
-
-    // make sure non-terminals are reported for each line
-    lh := p.handler as ListHandler
-    expectedRanges := [
-      "Timestamp": [8..<15, 18..<25],
-      "Number": [8..<11, 12..<15, 18..<21, 22..<25]
-    ]
-    expectedRanges.each |Range[] expected, Str name| {
-      actual := lh.blocks.findAll { it.name == name }.map |b->Range| { b.range }
-      verifyEq(expected, actual)
-    }
-  }
-  
   Void testSparse() {
     input := "abcde"
     grammar := "Top <- {Body} E EOF

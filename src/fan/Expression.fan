@@ -201,11 +201,7 @@ const class Nt : Expression {
         state.pop
         if (0 == state.predicate) {
           // visit block, only if we're not under predicate
-          ranges := state.skipIndentRange(r.bytePos..<state.bytePos, r.charPos..<state.charPos)
-          state.handler.visit(BlockImpl(name, ranges[1], ranges[0]))
-          if (state.isCapturingIndentBlocks) {
-            state.pushIndentBlock(BlockImpl(name, ranges[1], ranges[0]))
-          }
+          state.handler.visit(BlockImpl(name, r.charPos..<state.charPos, r.bytePos..<state.bytePos))
         }
     }
   }
@@ -401,60 +397,6 @@ const class Not : Expression {
   }
 }
 
-** Indent expression with a custom rule.
-@Js
-const class Indent : Expression {
-  ** Whitespace rule that is used by default when invoked as "INDENT"
-  ** without a custom rule. Equivalent to "[ \t]+"
-  static private const Expression WHITESPACE :=
-    E.seq([E.clazz([' ', '\t']), E.rep(E.clazz([' ', '\t']))])
-
-  new make(Str? name := null) : super(name != null ? [name] : [,]) {}
-
-  override Str toStr() { kids.isEmpty ? "INDENT" : "INDENT($kids.first)" }
-
-  override Void perform(ParserState state) {
-    r := state.peek
-    switch (state.match.state) {
-      case MatchState.unknown:
-        // we're here first time
-        newE := kids.isEmpty ? WHITESPACE : E.nt(kids.first)
-        state.setCurPos(r)
-        state.push(newE)
-        state.startCapturingIndentBlocks
-
-      case MatchState.fail:
-        // sub-expression failed, remove itself and do nothing
-        state.stopCapturingIndentBlocks
-        state.lack
-
-      case MatchState.success:
-        // sub-expression succeeded
-        // pushes currently matched text as an indent string
-        state.pushIndent
-        state.stopCapturingIndentBlocks
-        state.success
-    }
-  }
-}
-
-** Dedent expression. Has no kids.
-@Js
-const class Dedent : Expression {
-  new make() : super() {}
-
-  override Str toStr() { "DEDENT" }
-
-  override Void perform(ParserState state) {
-    if(!state.isInEolPos || state.isInIndentPos) {
-      state.lack
-    } else {
-      state.popIndent
-      state.success
-    }
-  }
-}
-
 ** Expression factory. 
 ** Use this factory instead of direct expression classes.
 ** 
@@ -526,12 +468,6 @@ const class E {
   ** It's translated into (!e2 e)* e2
   static Expression lazyRep(Obj e, Obj e2) { Seq([rep(seq([not(e2), parse(e)])), parse(e2)])}
 
-  ** Indent expression
-  static Expression indent(Str? name := null) { Indent(name) }
-
-  ** Dedent expression
-  static Expression dedent() { Dedent() }
-  
   ** Sparse call expression
   static Expression sparseCall(Obj[] sparseRules, Obj tailRule) { lazyRep(choice(sparseRules.dup.add(any)), tailRule) }
   

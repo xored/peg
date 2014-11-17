@@ -29,10 +29,6 @@ const class MetaGrammar : GrammarImpl
       
       "Spacing" : E.rep(E.choice(["#Space", "#Comment"])),
       
-      "INDENT": E.seq([E.t("INDENT"), E.opt(["#OPEN", "#Identifier", "#CLOSE"])]),
-
-      "DEDENT" : E.t("DEDENT"),
-      
       "DOT" : E.t("."),
       
       "CLOSE" : E.t(")"),
@@ -99,8 +95,6 @@ const class MetaGrammar : GrammarImpl
     
       "Primary" : E.seq([
         E.choice([
-          "#INDENT",
-          "#DEDENT",
           ["#Identifier", "#Spacing", E.not("#LEFTARROW")],
           ["#OPEN", "#Spacing", "#Expression", "#CLOSE"],
           "#Literal",

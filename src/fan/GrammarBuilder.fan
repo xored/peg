@@ -216,13 +216,6 @@ class GrammarBuilder
     case "DOT":
       e = dot
 
-    case "INDENT":
-      e = indent
-
-    case "DEDENT":
-      pop("DEDENT")
-      e = E.dedent
-      
     default:
       throw ArgErr("Expected 'Identifier', 'CLOSE', 'Literal', 'Class' or 'DOT' at ${curInd} index, but got $n")
     }
@@ -342,16 +335,5 @@ class GrammarBuilder
       }
     }
     return E.nt(symbol)    
-  }
-
-  private Expression indent() {
-    pop("INDENT")
-    if (null != popIf("CLOSE")) { // Got an indent with a custom rule
-      rule := (Nt) nt
-      pop("OPEN")
-      return E.indent(rule.symbol)
-    }
-    // Got an ordinary whitespace indent
-    return E.indent
   }
 }
