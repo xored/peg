@@ -1,0 +1,20 @@
+StyleSet <- S Style* EOF
+S <- (Space / Comment)*
+Space <- [ \t\r\n]
+Comment <- '/*' (!'*/' .)* '*/' 
+ID <- [a-zA-Z_] IDTail
+IDTail <- [a-zA-Z_0-9]*
+
+Style <- NameList S PropListStart S PropertyList? PropListEnd S
+NameList <- Name (S ',' S Name)* 
+Name <- (Namespace ':')? ID
+Namespace <- ID
+PropListStart <- '{'
+PropListEnd <- '}'
+PropertyList <- (Property S ';' S)+
+
+Property <- PropName S ':' S PropValue
+
+PropName <- ID ('-' IDTail)*
+PropValue <- ((!';' .) / ';;')*
+EOF <- !.
