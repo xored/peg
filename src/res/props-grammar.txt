@@ -2,12 +2,15 @@ StyleSet <- S Style* EOF
 S <- (Space / Comment)*
 Space <- [ \t\r\n]
 Comment <- '/*' (!'*/' .)* '*/' 
+GID <- NestedNamedID / ID Space ID / ID
+NestedNamedID <- NamedID Space ID / ID Space NamedID
+NamedID <- ID ':' ID
 ID <- [a-zA-Z_] IDTail
 IDTail <- [a-zA-Z_0-9]*
 
 Style <- NameList S PropListStart S PropertyList? PropListEnd S
 NameList <- Name (S ',' S Name)* 
-Name <- (Namespace ':')? ID
+Name <- (Namespace ':')? GID
 Namespace <- ID
 PropListStart <- '{'
 PropListEnd <- '}'
