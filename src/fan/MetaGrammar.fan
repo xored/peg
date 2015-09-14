@@ -67,7 +67,8 @@ const class MetaGrammar : GrammarImpl
       
       "Range" : E.choice([
         ["#Char", E.t("-"), "#Char"],
-        "#Char"
+        "#Char",
+        ["#Char", E.t("-")]
       ]),
       
       "Class" : E.seq(["[", E.rep([E.not("]"), "#Range"]), "]"]),
