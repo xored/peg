@@ -82,8 +82,13 @@ class GrammarBuilderTest : Test
     verifyGrammar("A <- '\\r'", GrammarImpl("A", ["A": E.t("\r")]))
     verifyGrammar("A <- '\\''", GrammarImpl("A", ["A": E.t("'")]))
     verifyGrammar("A <- '\\\"'", GrammarImpl("A", ["A": E.t("\"")]))
-    
-    verifyGrammar("A <- [_-]", GrammarImpl("A", ["A": E.seq('_', '-')]))
+  }
+  
+  Void testNx() {
+    //verifyGrammar("A <- [_]", GrammarImpl("A", ["A": E.clazz(['_'])]))
+    //verifyGrammar("A <- [-]", GrammarImpl("A", ["A": E.clazz(['-'])]))
+      verifyGrammar("A <- [-a]", GrammarImpl("A", ["A": E.clazz(['-', 'a'])]))
+      verifyGrammar("A <- [-_]", GrammarImpl("A", ["A": E.clazz(['-', '_'])]))
   }
   
   Void testInvalidGrammar() {
