@@ -169,11 +169,19 @@ class ParserState {
     r.charPos = charPos
   }
   
-  Str? readChars(Int size) {
-    if (buf.remaining < size) {
-      return null
-    }
+  Str? readChars(Int size, Str target) {
     try {
+      if (buf.remaining < size) {
+        pos := buf.pos
+        lastChars := buf.readChars(buf.remaining)
+        buf.seek(pos)
+        if (target.startsWith(lastChars)) {
+          return null // possible match, wait for additional chars
+        } else {
+          return lastChars // no match
+        }
+      }
+
       ret := buf.readChars(size)
       this.bytePos = buf.pos
       this.charPos += ret.size
