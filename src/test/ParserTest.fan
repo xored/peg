@@ -511,4 +511,24 @@ class ParserTest : Test
     grammar = "Top <- '\\uEFFFF' !."
     wholeTest(input, ["Top" : 0..<2], Grammar.fromStr(grammar))
   }
+  
+  ** Test that rule IS rejected when the log is growing
+  ** and there're not enough symbols to check this by remaining file size.
+  Void testNoLackWithGrowingLog() {
+    input := "aab "
+    grammar := "Top <- 'aa' 'cccccc'"
+    p := Parser(Grammar.fromStr(grammar), ListHandler())
+    p.run(input.toBuf, false)
+    verifyEq(MatchState.fail, p.match.state)
+  }
+  
+  ** Test that rule is NOT rejected when the log is growing
+  ** and there're not enough symbols to check this by remaining file size.
+  Void testLackWithGrowingLog() {
+    input := "aab "
+    grammar := "Top <- 'aa' 'b ' 'ccc'"
+    p := Parser(Grammar.fromStr(grammar), ListHandler())
+    p.run(input.toBuf, false)
+    verifyEq(MatchState.lack, p.match.state)
+  }
 }
