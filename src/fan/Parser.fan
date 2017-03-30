@@ -170,10 +170,12 @@ class ParserState {
   }
   
   Str? readChars(Int size) {
-    if (buf.remaining < size) {
-      return null
-    }
     try {
+      if (buf.remaining < size) {
+        lastChars := buf.readChars(buf.remaining)
+        return lastChars // caller will define what to do with that (lack or fail state)
+      }
+
       ret := buf.readChars(size)
       this.bytePos = buf.pos
       this.charPos += ret.size

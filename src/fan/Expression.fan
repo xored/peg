@@ -88,8 +88,8 @@ const class T : Expression {
     e := (T)r.e
     s := (Str)e.kids.first
     state.setCurPos(r)
-    bufS := state.readChars(s.size)    
-    if (null == bufS) {
+    bufS := state.readChars(s.size)
+    if (null == bufS || (s.size > bufS.size && s.startsWith(bufS))) {
       // got EOF
       state.seekR(r)
       state.lack
